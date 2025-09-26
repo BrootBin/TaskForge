@@ -1,0 +1,49 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="https://kit.fontawesome.com/a9d811fd14.js" crossorigin="anonymous"></script>
+	<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+	<link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32x32.png' %}">
+	<link rel="icon" type="image/png" sizes="192x192" href="{% static 'img/favicon-192x192.png' %}">
+	<link rel="apple-touch-icon" href="{% static 'img/favicon-192x192.png' %}">
+
+	<link rel="stylesheet" href="{% static 'css/style.css' %}">
+	<title>{% block title %}TaskForge{% endblock title %}</title>
+</head>
+<body>
+	<header class="nav-bar">
+	<div class="logo">
+		<img src="{% static 'img/logo.png' %}" alt="TaskForge Logo" class="logo-img">
+			<span class="logo-text">TaskForge</span>
+	</div>
+	<nav class="nav-links">
+		<ul>
+			<li><a href="#">Dashboard</a></li>
+			<li><a href="#">My goals</a></li>
+			<li><a href="#">Habits</a></li>
+			<li><a href="#">Statistics</a></li>
+		</ul>
+	</nav>
+	<div class="notifications-container">
+		<i id="bell" class="fa-regular fa-bell" style="color: #FFD700;"></i>
+		<div class="notifications-dropdown">
+			<ul id="notifications-list"></ul>
+		</div>
+	</div>
+	</header>
+
+	<main class="main-content">
+		{% block content %}
+		{% endblock %}
+	</main>
+	<footer class="footer">
+		<p>®DreamTeam production</p>
+		<p>Support for neurological treatment and nerve cell recovery. <strong>0000 0000 0000 0000</strong></p>
+	</footer>
+	<script src="{% static 'js/script.js' %}"></script>
+</body>
+</html>

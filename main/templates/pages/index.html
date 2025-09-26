@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+		<div class="welcome-section">
+		<div class="welcome-text-container">
+			<h1 class="welcome">Forge your future <br>with TaskForge</h1>
+			<p class="welcome_text">Track your habits, build streaks, and <br> achieve your goals.</p>
+			<div class="create-goal-btn">
+				<a href="#" class="btn">
+					<i class="fa-solid fa-plus" style="color: gold;"></i> Додати нову ціль
+				</a>
+			</div>
+		</div>
+
+		<div class="progress-container">
+			<svg class="progress-ring" width="120" height="120">
+				<circle class="progress-ring__background"
+						stroke="#7A7A7A"
+						stroke-width="10"
+						fill="transparent"
+						r="50" cx="60" cy="60"/>
+				<circle class="progress-ring__progress"
+						stroke="#D4AF37"
+						stroke-width="5"
+						fill="transparent"
+						stroke-linecap="round"
+						r="50" cx="60" cy="60"/>
+			</svg>
+			<p class="progress-text">Monthly progress</p>
+		</div>
+
+{% endblock content %}

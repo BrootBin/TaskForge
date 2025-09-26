@@ -1,0 +1,188 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: url('../img/background.png') no-repeat center center fixed;
+  background-size: cover;
+  font-family: "Montserrat", sans-serif;
+  color: #FFFFFF;
+}
+
+/* Навбар */
+header.nav-bar {
+  width: calc(90% - 40px);
+  margin: 20px auto 0 auto;
+  background-color: #1A1A1A;
+  color: white;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #0E0E0E;
+}
+.nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #000000;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-links ul {
+  display: flex;
+  gap: 60px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-links ul li a {
+  color: #FFFFFF;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.nav-links ul li a:hover {
+  color: #FFD700;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-text {
+  font-family: "Cinzel", serif;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #D4AF37;
+}
+.logo-img {
+  height: 70px;
+  width: 70px;
+}
+#bell {
+  padding-top: 10px;
+  font-size: 24px;
+}
+
+
+/* Основний контейнер */
+main.main-content {
+  width: calc(90% - 40px);
+  background-color: #1A1A1A;
+  margin: 0 auto auto;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Welcome секція */
+.welcome-section {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.welcome-text-container {
+  flex: 1;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.welcome-section h1 {
+  font-family: "Cinzel", serif;
+  font-weight: 600;
+  color: #D4AF37;
+  margin: 0 0 10px 0;
+}
+
+.welcome-section p {
+  margin: 0 0 10px 0; 
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+  color: #FFFFFF;
+}
+
+/* Прогрес коло */
+.progress-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-right: 40px;
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring__background {
+  opacity: 0.3;
+}
+
+.progress-ring__progress {
+  transition: stroke-dashoffset 0.35s;
+  transform-origin: 50% 50%;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+  color: #D4AF37;
+  font-size: 14px;
+}
+
+/* Кнопка */
+.create-goal-btn {
+  margin: 20px 0 20px 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #1A1A1A;
+  color: #D4AF37;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 2px solid #FFD700;
+  transition: background 0.3s, color 0.3s;
+}
+
+.btn:hover {
+  background-color: #2C2C2C;
+  color: #FFD700;
+}
+
+/* Футер */
+footer {
+  width: calc(90% - 40px);
+  margin: 0px auto 0 auto;
+  padding: 10px 20px;
+  background-color: #1A1A1A;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+.footer {
+  text-align: center;
+  font-size: 0.9em;
+  color: #7A7A7A;
+  border-top: 2px solid #0E0E0E;
+}
