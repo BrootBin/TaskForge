@@ -75,6 +75,143 @@ header.nav-bar {
   padding-top: 10px;
   font-size: 24px;
 }
+.profile-icon {
+  padding-top: 10px;
+  font-size: 24px;
+  margin-left: 20px;
+  cursor: pointer;
+}
+
+/* Загальні стилі для модалів */
+.modal, .notifications-dropdown {
+    display: none; 
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+}
+
+/* Модальне вікно авторизації */
+#auth-modal {
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none; 
+    transition: opacity 0.3s ease;
+}
+
+#auth-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#auth-modal .modal-content {
+    background-color: #1A1A1A;
+    padding: 30px;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90%;
+    position: relative;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+
+#auth-modal .close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #FFD700;
+}
+
+/* Форми */
+#auth-modal form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#auth-modal input {
+    width: 90%;
+    margin: 10px; 
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #FFD700;
+    background-color: #2C2C2C;
+    color: #FFFFFF;
+    box-sizing: border-box; 
+}
+
+#auth-modal button {
+    margin: 10px;
+    padding: 10px;
+    background-color: #1A1A1A;
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+#auth-modal button:hover {
+    background-color: #2C2C2C;
+}
+
+.notifications-container {
+    position: relative;
+}
+
+/* Сам контейнер сповіщень */
+.notifications-dropdown {
+    position: absolute;
+    top: 100%; 
+    right: 0;
+    transform: translateX(-100%);
+    width: 200px;
+    min-height: 100px;
+    max-height: 350px;
+    overflow-y: auto;
+    background-color: #1A1A1A;
+    border: 1px solid #FFD700;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    padding: 10px;
+    display: none;
+    z-index: 1100;
+}
+
+.notifications-dropdown.active {
+    display: block;
+}
+/* Список повідомлень */
+.notifications-dropdown ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.notifications-dropdown ul li.no-notifications {
+    text-align: center;
+    color: #CCCCCC;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 15px;
+    transform: translateY(0);
+}
+
+
 
 
 /* Основний контейнер */

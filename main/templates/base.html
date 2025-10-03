@@ -28,16 +28,49 @@
 			<li><a href="#">Statistics</a></li>
 		</ul>
 	</nav>
+	<div class="profile-icon">
+		<i id="profile-btn" class="fa-regular fa-user" style="color: #FFD700; cursor: pointer;"></i>
+	</div>
+
 	<div class="notifications-container">
-		<i id="bell" class="fa-regular fa-bell" style="color: #FFD700;"></i>
+		<i id="bell" class="fa-regular fa-bell" style="color: #FFD700; cursor: pointer;"></i>
 		<div class="notifications-dropdown">
 			<ul id="notifications-list"></ul>
 		</div>
 	</div>
+
+
+
 	</header>
+		<div id="auth-modal" class="modal">
+		<div class="modal-content">
+			<span class="close">&times;</span>
+
+			<form id="login-form" method="post" action="{% url 'login' %}">
+				{% csrf_token %}
+				<h2>Вхід</h2>
+				<input type="text" name="username" placeholder="Логін" required>
+				<input type="password" name="password" placeholder="Пароль" required>
+				<button type="submit">Увійти</button>
+				<p>Немає акаунта? <a href="#" id="show-register">Зареєструватись</a></p>
+			</form>
+
+			<form id="register-form" method="post" action="{% url 'register' %}" style="display:none;">
+				{% csrf_token %}
+				<h2>Реєстрація</h2>
+				<input type="text" name="username" placeholder="Логін" required>
+				<input type="password" name="password" placeholder="Пароль" required>
+				<input type="password" name="confirm" placeholder="Повторіть пароль" required>
+				<button type="submit">Створити акаунт</button>
+				<p>Вже маєш акаунт? <a href="#" id="show-login">Увійти</a></p>
+			</form>
+				
+		</div>
+	</div>
 
 	<main class="main-content">
 		{% block content %}
+			<div id="root"></div>
 		{% endblock %}
 	</main>
 	<footer class="footer">
@@ -45,5 +78,6 @@
 		<p>Support for neurological treatment and nerve cell recovery. <strong>0000 0000 0000 0000</strong></p>
 	</footer>
 	<script src="{% static 'js/script.js' %}"></script>
+	<script src="{% static 'js/main.9d5f3f95.js' %}"></script>
 </body>
 </html>
