@@ -104,3 +104,10 @@ class Notification(models.Model):
         profile = getattr(self.user, 'telegram_profile', None)
         return self.send_telegram and profile and profile.connected
 
+
+class Pending2FA(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    telegram_id = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed = models.BooleanField(default=False)
+

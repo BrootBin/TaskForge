@@ -1,7 +1,19 @@
 import logo from './logo.svg';
 import './App.css';
 
+
+import { useEffect } from 'react';
+
 function App() {
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/notifications/');
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      alert('Новое уведомление: ' + data.message);
+    };
+    return () => ws.close();
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
