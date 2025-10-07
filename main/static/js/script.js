@@ -8,10 +8,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const showRegister = document.getElementById("show-register");
     const showLogin = document.getElementById("show-login");
 
+    // --- Two-Factor Authentication Modal ---
+    function show2FAModal(username) {
+        const modal = document.getElementById("twofa-modal");
+        if (!modal) return;
+
+        // Show the modal
+        modal.style.display = "block";
+
+        // Poll server every 2 seconds to check if 2FA is confirmed
+        const interval = setInterval(() => {
+            fetch(`/api/telegram_2fa_status/?username=${username}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.confirmed) {
+                        // Hide modal and stop polling
+                        modal.style.display = "none";
+                        clearInterval(interval);
+
+                        // Reload page or redirect after confirmation
+                        window.location.reload();
+                    }
+                })
+                .catch(err => console.error("Error checking 2FA status:", err));
+        }, 2000);
+    }
+
+    // Call this function if Django sets a JS variable `window.show2faUser` with the username
+    if (window.show2faUser) {
+        show2FAModal(window.show2faUser);
+    }
+
     // Check if user is authenticated by looking for a greeting message
     const greetingBlock = authModal.querySelector("h2");
     const isAuthenticated = greetingBlock && greetingBlock.textContent.startsWith("Hi,");
-
 
     if (isAuthenticated) {
         if (loginForm) loginForm.style.display = "none";
@@ -64,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(res => res.json())
                 .then(data => {
                     if (data.status !== "ok") {
-                        alert("Помилка при зміні статусу оповіщення!");
+                        alert("Error when changing alert status!");
                     }
                 });
         });
@@ -85,16 +115,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(res => res.json())
                 .then(data => {
                     if (data.status !== "ok") {
-                        alert("Помилка при зміні статусу 2FA!");
+                        alert("Error when changing status 2FA!");
                     }
                 });
         });
     }
 
-    if (notificationsList.children.length === 0) {
+    if (notificationsList && notificationsList.children.length === 0) {
         const li = document.createElement("li");
         li.classList.add("no-notifications");
-        li.textContent = "У вас поки що немає сповіщень";
+        li.textContent = "You have no notifications";
         notificationsList.appendChild(li);
     }
 
@@ -112,6 +142,4 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     notificationsDropdown.addEventListener("click", (e) => e.stopPropagation());
-
-
 });

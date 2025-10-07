@@ -138,6 +138,28 @@ header.nav-bar {
   color: #FFD700;
 }
 
+/* Очікувальна модалка */
+#twofa-modal{
+  display:none;
+  position:fixed;
+  top:0; left:0;
+  width:100%;
+  height:100%; 
+  background: rgba(0,0,0,0.5);
+  z-index:1000;
+  text-align:center;
+}
+
+#modal-waiting{
+  position:relative;
+  top:30%;
+  display:inline-block;
+  background:#fff;
+  padding:30px;
+  border-radius:10px;
+  box-shadow:0 0 15px rgba(0,0,0,0.3);
+}
+
 /* Форми */
 #auth-modal form {
   display: flex;

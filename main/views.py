@@ -4,12 +4,14 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from .models import Notification, TelegramProfile, Pending2FA
+from .tasks import send_2fa_request
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import random
 import json
 import os
+
 
 def home(request):
     telegram_code = None
@@ -34,11 +36,11 @@ def register_view(request):
         confirm = request.POST.get("confirm")
 
         if password != confirm:
-            messages.error(request, "Паролі не співпадають")
+            messages.error(request, "The passwords do not match")
             return redirect("home")
 
         if User.objects.filter(username=username).exists():
-            messages.error(request, "Користувач з таким іменем вже існує")
+            messages.error(request, "Username already taken")
             return redirect("home")
 
 
@@ -48,37 +50,44 @@ def register_view(request):
     login(request, user)
     return redirect("home")
 
-
-
+@csrf_exempt
 def login_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
-        if user is not None:
-            profile = getattr(user, 'telegram_profile', None)
-            if profile and profile.two_factor_enabled:
-                from .models import Pending2FA
-                pending = Pending2FA.objects.filter(user=user, telegram_id=profile.telegram_id).first()
-                if pending and pending.confirmed:
-                    login(request, user)
-                    pending.delete()
-                    return redirect("home")
-                else:
-                    if not pending:
-                        Pending2FA.objects.create(user=user, telegram_id=profile.telegram_id)
-                        # Вызываем Python-бота через Celery
-                        from main.tasks import send_2fa_request
-                        send_2fa_request.delay(profile.telegram_id, user.username)
-                    messages.info(request, "Підтвердіть вхід через Telegram!")
-                    return redirect("home")
-            else:
-                login(request, user)
-                return redirect("home")
-        else:
-            messages.error(request, "Невірний логін або пароль")
-            return redirect("home")
-    return redirect("home")
+
+        if user is None:
+            messages.error(request, "Incorrect username or password.")
+            return render(request, "base.html")  # Рендеримо base з модалкою
+
+        profile = getattr(user, 'telegram_profile', None)
+
+        if profile and profile.two_factor_enabled:
+            pending = Pending2FA.objects.filter(user=user, telegram_id=profile.telegram_id).first()
+
+            if not pending:
+                # Створюємо pending 2FA і надсилаємо повідомлення
+                Pending2FA.objects.create(user=user, telegram_id=profile.telegram_id)
+                import logging
+                logger = logging.getLogger(__name__)
+
+                logger.info(f"Sending 2FA request to Telegram ID {profile.telegram_id}")
+                send_2fa_request.delay(profile.telegram_id, user.username)
+
+            # ❌ Не логінемо поки не підтверджено, просто рендеримо base з модалкою
+            return render(request, "base.html", {
+                "show_2fa_modal": True,
+                "username": user.username
+            })
+
+        # Якщо 2FA не включена → звичайний логін
+        login(request, user)
+        messages.success(request, "Login successful!")
+        return redirect("home")
+
+    # GET → просто рендеримо home/base
+    return render(request, "base.html")
 
 
 @csrf_exempt
@@ -87,17 +96,33 @@ def telegram_2fa_confirm(request):
         data = json.loads(request.body)
         telegram_id = data.get('telegram_id')
         username = data.get('username')
+
         try:
             user = User.objects.get(username=username)
-            pending = Pending2FA.objects.filter(user=user, telegram_id=telegram_id, confirmed=False).first()
-            if pending:
-                pending.confirmed = True
-                pending.save()
-                return JsonResponse({"status": "ok"})
-            return JsonResponse({"status": "error", "msg": "No pending session"})
+            pending = Pending2FA.objects.filter(user=user, telegram_id=str(telegram_id), confirmed=True).first()
+            if not pending:
+                return JsonResponse({"status": "error", "msg": "No confirmed 2FA session"})
+
+            # --- Вхід користувача ---
+            from django.contrib.auth import login
+            login(request, user)
+            pending.delete()
+            return JsonResponse({"status": "ok", "msg": "User logged in"})
         except User.DoesNotExist:
             return JsonResponse({"status": "error", "msg": "User not found"})
     return JsonResponse({"status": "error"})
+
+def telegram_2fa_status(request):
+    username = request.GET.get("username")
+    if not username:
+        return JsonResponse({"confirmed": False})
+
+    try:
+        user = User.objects.get(username=username)
+        pending = Pending2FA.objects.filter(user=user, confirmed=True).first()
+        return JsonResponse({"confirmed": bool(pending)})
+    except User.DoesNotExist:
+        return JsonResponse({"confirmed": False})
 
 @login_required
 def logout_view(request):
@@ -218,3 +243,4 @@ def tg_2fa_toggle(request):
         return JsonResponse({"status": "ok"})
     except Exception as e:
         return JsonResponse({"status": "error", "msg": str(e)}, status=400)
+    
