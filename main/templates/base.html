@@ -63,15 +63,17 @@
                 <div class="tg-code-block">
                   {% if telegram_code %}
                     <p>This is your key: <strong>{{ telegram_code }}</strong></p>
-                    <p>Send this key to our bot, to connect your accout.</p>
+                    <p>Send this key to our bot, to connect your account.</p>
+                  {% elif telegram_connected %}
+                    <p>✅ Your Telegram account has been successfully linked!</p>
                   {% else %}
-                    <p>Key is not founded. <br>Try latter or text to our admins.</p>
+                    <p>No key available.<br>Try again later or contact our admins.</p>
                   {% endif %}
                 </div>
                 <div class="tg-switch-block">
                   <span style="margin-right: 10px;">Notification Telegram:</span>
                   <label class="switch">
-                    <input type="checkbox" id="tg-notify-switch" {% if telegram_notify_enabled %}checked{% endif %}>
+                    <input type="checkbox" id="tg-notify-switch" {% if telegram_notify_enabled %} checked {% endif %}>
                     <span class="slider"></span>
                   </label>
                   </div>
@@ -97,7 +99,7 @@
             <input type="password" name="password" placeholder="Password" required />
             <button type="submit" class="wide-btn">Log in</button>
             <p>
-              Don't have account? <a href="#" id="show-register">Sign in</a>
+              Don't have account? <a href="#" id="show-register">Sign up</a>
             </p>
           </form>
 
@@ -134,7 +136,10 @@
         Support for neurological treatment and nerve cell recovery. <strong>0000 0000 0000 0000</strong>
       </p>
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="{% static 'js/script.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/calendar.js' %}"></script>
     <script>
         {% if show_2fa_modal and username %}
             window.show2faUser = "{{ username }}";

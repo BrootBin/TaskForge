@@ -13,25 +13,39 @@ document.addEventListener("DOMContentLoaded", () => {
         const modal = document.getElementById("twofa-modal");
         if (!modal) return;
 
-        // Show the modal
         modal.style.display = "block";
 
-        // Poll server every 2 seconds to check if 2FA is confirmed
-        const interval = setInterval(() => {
+        // --- Polling Logic ---
+        let isPolling = true;
+        const poll = () => {
+            if (!isPolling) return; // Stop if polling is disabled
+
             fetch(`/api/telegram_2fa_status/?username=${username}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.confirmed) {
-                        // Hide modal and stop polling
-                        modal.style.display = "none";
-                        clearInterval(interval);
-
-                        // Reload page or redirect after confirmation
-                        window.location.reload();
+                        isPolling = false; // Stop polling
+                        window.location.reload(); // Reload on success
+                    } else {
+                        setTimeout(poll, 2000); // Continue polling
                     }
                 })
-                .catch(err => console.error("Error checking 2FA status:", err));
-        }, 2000);
+                .catch(err => {
+                    console.error("Error checking 2FA status:", err);
+                    setTimeout(poll, 5000); // Retry after a longer delay on error
+                });
+        };
+
+        poll(); // Start polling
+
+        // Optional: Stop polling if the modal is closed manually
+        const closeBtn = modal.querySelector(".close");
+        if (closeBtn) {
+            closeBtn.addEventListener("click", () => {
+                isPolling = false;
+                modal.style.display = "none";
+            });
+        }
     }
 
     // Call this function if Django sets a JS variable `window.show2faUser` with the username

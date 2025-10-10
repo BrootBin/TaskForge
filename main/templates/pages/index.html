@@ -2,32 +2,35 @@
 {% load static %}
 
 {% block content %}
-		<div class="welcome-section">
-		<div class="welcome-text-container">
-			<h1 class="welcome">Forge your future <br>with TaskForge</h1>
-			<p class="welcome_text">Track your habits, build streaks, and <br> achieve your goals.</p>
-			<div class="create-goal-btn">
-				<a href="#" class="btn">
-					<i class="fa-solid fa-plus" style="color: gold;"></i> Create new goal
-				</a>
-			</div>
-		</div>
-
-		<div class="progress-container">
-			<svg class="progress-ring" width="120" height="120">
-				<circle class="progress-ring__background"
-						stroke="#7A7A7A"
-						stroke-width="10"
-						fill="transparent"
-						r="50" cx="60" cy="60"/>
-				<circle class="progress-ring__progress"
-						stroke="#D4AF37"
-						stroke-width="5"
-						fill="transparent"
-						stroke-linecap="round"
-						r="50" cx="60" cy="60"/>
-			</svg>
-			<p class="progress-text">Monthly progress</p>
-		</div>
-
-{% endblock content %}
+    <div class="welcome-section">
+        <div class="welcome-text-container">
+            <h1 class="welcome">Forge your future <br>with TaskForge</h1>
+            <p class="welcome_text">Track your habits, build streaks, and <br> achieve your goals.</p>
+            <div class="create-goal-btn">
+                <a href="#" class="btn">
+                    <i class="fa-solid fa-plus" style="color: gold;"></i> Create new goal
+                </a>
+            </div>
+            
+            <!-- Habits section moved under create-goal-btn -->
+         	<div class="habits-section">
+                <h2 class="section-title">My Habits</h2>
+                <div class="habit-cards">
+                    <div class="habit-card">
+                        <i class="fa-solid fa-book-open"></i>
+                        <h3>Read 20 min/day</h3>
+                        <p>🔥 12 days in a row</p>
+                    </div>
+                    <div class="habit-card">
+                        <i class="fa-solid fa-dumbbell"></i>
+                        <h3>Exercise</h3>
+                        <p>🔥 12 days in a row</p>
+                    </div>
+                    <div class="habit-card">
+                        <i class="fa-solid fa-spa"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

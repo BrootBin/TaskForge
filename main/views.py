@@ -17,16 +17,19 @@ def home(request):
     telegram_code = None
     telegram_notify_enabled = False
     two_factor_enabled = False
+    telegram_connected = False
     if request.user.is_authenticated:
         profile = getattr(request.user, 'telegram_profile', None)
         if profile:
             telegram_code = profile.bind_code
             telegram_notify_enabled = profile.connected
             two_factor_enabled = profile.two_factor_enabled
+            telegram_connected = profile.connected and profile.telegram_id is not None
     return render(request, 'pages/index.html', {
         'telegram_code': telegram_code,
         'telegram_notify_enabled': telegram_notify_enabled,
-        'two_factor_enabled': two_factor_enabled
+        'two_factor_enabled': two_factor_enabled,
+        'telegram_connected': telegram_connected
     })
 
 def register_view(request):
@@ -59,35 +62,50 @@ def login_view(request):
 
         if user is None:
             messages.error(request, "Incorrect username or password.")
-            return render(request, "base.html")  # Рендеримо base з модалкою
+            return render(request, "base.html", {
+                'telegram_code': None,
+                'telegram_notify_enabled': False,
+                'two_factor_enabled': False,
+                'telegram_connected': False
+            })
 
         profile = getattr(user, 'telegram_profile', None)
 
         if profile and profile.two_factor_enabled:
-            pending = Pending2FA.objects.filter(user=user, telegram_id=profile.telegram_id).first()
+            # Сначала проверяем, есть ли уже подтвержденный запрос
+            pending_confirmed = Pending2FA.objects.filter(user=user, confirmed=True).first()
+            if pending_confirmed:
+                login(request, user)
+                pending_confirmed.delete()
+                messages.success(request, "Login successful!")
+                return redirect("home")
 
-            if not pending:
-                # Створюємо pending 2FA і надсилаємо повідомлення
+            # Если подтвержденного нет, создаем новый запрос (если его еще нет)
+            if not Pending2FA.objects.filter(user=user, confirmed=False).exists():
                 Pending2FA.objects.create(user=user, telegram_id=profile.telegram_id)
-                import logging
-                logger = logging.getLogger(__name__)
-
-                logger.info(f"Sending 2FA request to Telegram ID {profile.telegram_id}")
                 send_2fa_request.delay(profile.telegram_id, user.username)
-
-            # ❌ Не логінемо поки не підтверджено, просто рендеримо base з модалкою
+            
+            messages.info(request, "Please confirm your login via the Telegram message we've just sent.")
             return render(request, "base.html", {
                 "show_2fa_modal": True,
-                "username": user.username
+                "username": user.username,
+                'telegram_code': None,
+                'telegram_notify_enabled': profile.connected if profile else False,
+                'two_factor_enabled': profile.two_factor_enabled if profile else False,
+                'telegram_connected': profile.connected and profile.telegram_id is not None if profile else False
             })
 
-        # Якщо 2FA не включена → звичайний логін
+        # Если 2FA не включена → обычный логин
         login(request, user)
         messages.success(request, "Login successful!")
         return redirect("home")
 
-    # GET → просто рендеримо home/base
-    return render(request, "base.html")
+    return render(request, "base.html", {
+        'telegram_code': None,
+        'telegram_notify_enabled': False,
+        'two_factor_enabled': False,
+        'telegram_connected': False
+    })
 
 
 @csrf_exempt
@@ -168,9 +186,17 @@ def bind_telegram(request):
 @login_required
 def generate_telegram_code(request):
     profile, _ = TelegramProfile.objects.get_or_create(user=request.user)
+    
+    # Check if Telegram account is already connected
+    if profile.connected and profile.telegram_id:
+        return JsonResponse({
+            "status": "already_connected",
+            "message": "Your Telegram account is already linked."
+        })
+    
     profile.bind_code = f"{random.randint(100000, 999999)}"
     profile.save()
-    return JsonResponse({"code": profile.bind_code})
+    return JsonResponse({"code": profile.bind_code, "status": "ok"})
 
 
 @csrf_exempt

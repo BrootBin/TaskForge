@@ -57,8 +57,8 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_2fa_request_message(bot, telegram_id, username):
     keyboard = [
         [
-            InlineKeyboardButton("✅ Approve", callback_data=f"approve_{username}"),
-            InlineKeyboardButton("❌ Decline", callback_data=f"decline_{username}")
+            InlineKeyboardButton("✅ Approve", callback_data=f"2fa_approve_{username}"),
+            InlineKeyboardButton("❌ Decline", callback_data=f"2fa_decline_{username}")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -72,36 +72,63 @@ async def send_2fa_request_message(bot, telegram_id, username):
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
+    # Loging data for debugging --- IGNORE ---
+    callback_data = query.data
+    telegram_id = str(update.effective_user.id)
+    logging.info(f"Processing callback: {callback_data} from user ID: {telegram_id}")
 
-    data = query.data.split("_")
-    action, username = data[0], "_".join(data[1:])
+    # Split and handle different formats --- IGNORE ---
+    parts = callback_data.split("_")
+    
+    try:
+        # Format 2fa_approve_username
+        if len(parts) >= 3 and parts[0] == "2fa" and parts[1] in ["approve", "decline"]:
+            action = parts[1]
+            username = "_".join(parts[2:])
+        
+        elif len(parts) >= 2 and parts[0] in ["approve", "decline"]:
+            action = parts[0]
+            username = "_".join(parts[1:])
+        else:
+            logging.error(f"Неизвестный формат callback данных: {callback_data}")
+            await query.edit_message_text("❌ Неверный формат данных запроса.")
+            return
+        
+        logging.info(f"Обработка: действие={action}, пользователь={username}, telegram_id={telegram_id}")
+        
+        # Search user --- IGNORE ---
+        user = await sync_to_async(lambda: User.objects.filter(username=username).first())()
+        if not user:
+            logging.error(f"Пользователь не найден: {username}")
+            await query.edit_message_text(f"❌ Пользователь '{username}' не найден.")
+            return
 
-    user = await sync_to_async(lambda: User.objects.filter(username=username).first())()
-    if not user:
-        await query.edit_message_text("❌ User not found.")
-        return
-
-    pending = await sync_to_async(lambda: Pending2FA.objects.filter(user=user, confirmed=False).first())()
-    if not pending:
-        await query.edit_message_text("⏱️ No active 2FA request.")
-        return
-
-    if action == "approve":
-        pending.confirmed = True
-        await sync_to_async(pending.save)()
-
-        # Notify backend to log the user in
-        api_url = "https://localhost:8000/api/telegram_2fa/"  
-        async with aiohttp.ClientSession() as session:
-            await session.post(api_url, json={
-                "telegram_id": query.from_user.id,
-                "username": username
-            })
-
-        await query.edit_message_text("✅ Login approved! You are now signed in.")
-    else:
-        await sync_to_async(pending.delete)()
-        await query.edit_message_text("🚫 Login request declined.")
+        # Search for 2FA request - check by user and telegram_id
+        pending = await sync_to_async(
+            lambda: Pending2FA.objects.filter(user=user, telegram_id=telegram_id).first() or 
+                   Pending2FA.objects.filter(user=user).first()
+        )()
+        
+        if not pending:
+            logging.error(f" Active 2FA request for user {username} not found")
+            await query.edit_message_text("⏱️ Active 2FA request not found.")
+            return
+        
+        # Handle approve/decline actions
+        if action == "approve":
+            pending.confirmed = True
+            await sync_to_async(pending.save)()
+            await query.edit_message_text("✅ Login approved! You can continue on the website.")
+            logging.info(f"2FA confirmed for user: {username}")
+        else:
+            await sync_to_async(pending.delete)()
+            await query.edit_message_text("🚫 Login request declined.")
+            logging.info(f"2FA declined for user: {username}")
+    
+    except Exception as e:
+        logging.error(f"Error processing callback: {str(e)}")
+        await query.edit_message_text("❌ An error occurred while processing the request.")
 
 # --- Test command ---
 async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -1,20 +1,24 @@
-import asyncio
 from celery import shared_task
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from django.conf import settings
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
+import asyncio
 
 async def send_2fa_async(telegram_id, username):
+    """Асинхронно отправляет сообщение с кнопками 2FA."""
     bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
-    keyboard = [[InlineKeyboardButton("✅ Approve", callback_data=f"approve_{username}"),
-                 InlineKeyboardButton("❌ Decline", callback_data=f"decline_{username}")]]
+    keyboard = [[
+        InlineKeyboardButton("✅ Approve Login", callback_data=f"2fa_approve_{username}"),
+        InlineKeyboardButton("❌ Decline", callback_data=f"2fa_decline_{username}")
+    ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await bot.send_message(
         chat_id=telegram_id,
-        text=f"🔐 Please confirm login for *{username}*:",
+        text=f"🔐 Please confirm login for user: *{username}*",
         parse_mode="Markdown",
         reply_markup=reply_markup
     )
 
 @shared_task
 def send_2fa_request(telegram_id, username):
+    """Celery-задача для запуска асинхронной отправки 2FA."""
     asyncio.run(send_2fa_async(telegram_id, username))
