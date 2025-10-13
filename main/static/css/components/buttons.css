@@ -1,0 +1,135 @@
+/* 
+ * Стилі кнопок
+ * TaskForge - всі види кнопок
+ */
+
+/* Базова кнопка */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 20px;
+	background-color: var(--bg-main);
+	color: var(--primary);
+	font-weight: 600;
+	border-radius: var(--border-radius-md);
+	text-decoration: none;
+	border: 2px solid var(--primary);
+	transition: background 0.3s, color 0.3s;
+	cursor: pointer;
+}
+
+.btn:hover {
+	background-color: var(--bg-input);
+	color: var(--primary-hover);
+}
+
+/* Кнопка підтвердження */
+.confirm-btn {
+	background: var(--primary);
+	color: var(--bg-main);
+	border: none;
+	padding: 12px 20px;
+	border-radius: var(--border-radius-md);
+	font-weight: bold;
+	cursor: pointer;
+	margin-top: 20px;
+	width: 100%;
+	transition: all 0.3s;
+}
+
+.confirm-btn:hover {
+	background: var(--primary-hover);
+}
+
+.confirm-btn:disabled {
+	background: #555;
+	color: #888;
+	cursor: not-allowed;
+}
+
+/* Кнопка повернення */
+.back-btn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-size: 16px;
+	padding: 5px 10px;
+	margin-bottom: 15px;
+}
+
+.back-btn:hover {
+	color: var(--primary);
+}
+
+/* Кнопка додавання */
+.add-btn {
+	background: var(--bg-card);
+	border: 1px solid #444;
+	padding: 8px 12px;
+	color: var(--primary);
+	border-radius: var(--border-radius-sm);
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.add-btn:hover {
+	background: var(--bg-card-hover);
+}
+
+/* Широка кнопка логіну */
+.wide-btn {
+	width: calc(40% + 10px);
+	margin-left: -10px;
+	margin-right: -10px;
+}
+
+/* Кнопка використання шаблону */
+.template-use-btn {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 4px 8px;
+	background-color: var(--primary-very-light);
+	border: 1px solid var(--primary);
+	border-radius: var(--border-radius-sm);
+	color: var(--primary);
+	font-size: 12px;
+	text-align: center;
+	transition: all 0.3s ease;
+}
+
+.template-use-btn:hover {
+	background-color: var(--primary-light);
+}
+
+/* Кнопка перемикання шаблонів */
+.template-btn {
+	background: var(--bg-card-hover);
+	border: 1px solid #333;
+	color: var(--text-secondary);
+	padding: 8px 16px;
+	border-radius: var(--border-radius-sm);
+	cursor: pointer;
+	transition: all 0.3s;
+}
+
+.template-btn.active {
+	background: var(--primary);
+	color: var(--bg-main);
+	font-weight: bold;
+}
+
+/* Кнопка видалення */
+.remove-subgoal {
+	background: #555;
+	color: #fff;
+	border: none;
+	border-radius: var(--border-radius-sm);
+	width: 30px;
+	cursor: pointer;
+}
+
+.remove-subgoal:hover {
+	background: var(--danger);
+}

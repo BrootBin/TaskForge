@@ -2,35 +2,422 @@
 {% load static %}
 
 {% block content %}
-    <div class="welcome-section">
-        <div class="welcome-text-container">
-            <h1 class="welcome">Forge your future <br>with TaskForge</h1>
-            <p class="welcome_text">Track your habits, build streaks, and <br> achieve your goals.</p>
-            <div class="create-goal-btn">
-                <a href="#" class="btn">
-                    <i class="fa-solid fa-plus" style="color: gold;"></i> Create new goal
-                </a>
+  <div class="welcome-section">
+    <div class="welcome-text-container">
+      <h1 class="welcome">Forge your future <br />with TaskForge</h1>
+      <p class="welcome_text">
+        Track your habits, build streaks, and <br /> achieve your goals.
+      </p>
+      <div class="create-goal-btn">
+        <a href="#" id="create-new-btn" class="btn"><i class="fa-solid fa-plus" style="color: gold;"></i> Create new</a>
+      </div>
+
+      <!-- Habits section moved under create-goal-btn -->
+      <div class="habits-section">
+        <h2 class="section-title">My Habits</h2>
+        <div class="habit-cards">
+          {% if user_habits %}
+            {% for habit in user_habits %}
+              <div class="habit-card">
+                {% if habit.name|lower == 'read' or habit.name|lower == 'reading' %}
+                  <i class="fa-solid fa-book-open"></i>
+                {% elif habit.name|lower == 'exercise' or habit.name|lower == 'workout' or habit.name|lower == 'gym' %}
+                  <i class="fa-solid fa-dumbbell"></i>
+                {% elif habit.name|lower == 'meditate' or habit.name|lower == 'meditation' %}
+                  <i class="fa-solid fa-spa"></i>
+                {% elif habit.name|lower == 'water' or habit.name|lower == 'hydrate' %}
+                  <i class="fa-solid fa-glass-water"></i>
+                {% elif habit.name|lower == 'sleep' %}
+                  <i class="fa-solid fa-bed"></i>
+                {% else %}
+                  <i class="fa-solid fa-check-circle"></i>
+                {% endif %}
+                <h3>{{ habit.name }}</h3>
+                {% if habit.streak_days > 0 %}
+                  <p>🔥 {{ habit.streak_days }} days in a row</p>
+                {% else %}
+                  <p>Start your streak today!</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% elif template_habits %}
+            <div class="habits-template-message">
+              <p>Start tracking habits with our templates:</p>
             </div>
-            
-            <!-- Habits section moved under create-goal-btn -->
-         	<div class="habits-section">
-                <h2 class="section-title">My Habits</h2>
-                <div class="habit-cards">
-                    <div class="habit-card">
-                        <i class="fa-solid fa-book-open"></i>
-                        <h3>Read 20 min/day</h3>
-                        <p>🔥 12 days in a row</p>
-                    </div>
-                    <div class="habit-card">
-                        <i class="fa-solid fa-dumbbell"></i>
-                        <h3>Exercise</h3>
-                        <p>🔥 12 days in a row</p>
-                    </div>
-                    <div class="habit-card">
-                        <i class="fa-solid fa-spa"></i>
-                    </div>
-                </div>
+            {% for habit in template_habits %}
+              <div class="habit-card template">
+                {% if habit.name|lower == 'read' or habit.name|lower == 'reading' %}
+                  <i class="fa-solid fa-book-open"></i>
+                {% elif habit.name|lower == 'exercise' or habit.name|lower == 'workout' or habit.name|lower == 'gym' %}
+                  <i class="fa-solid fa-dumbbell"></i>
+                {% elif habit.name|lower == 'meditate' or habit.name|lower == 'meditation' %}
+                  <i class="fa-solid fa-spa"></i>
+                {% elif habit.name|lower == 'water' or habit.name|lower == 'hydrate' %}
+                  <i class="fa-solid fa-glass-water"></i>
+                {% elif habit.name|lower == 'sleep' %}
+                  <i class="fa-solid fa-bed"></i>
+                {% else %}
+                  <i class="fa-solid fa-check-circle"></i>
+                {% endif %}
+                <h3>{{ habit.name }}</h3>
+                <p>{{ habit.frequency }}</p>
+                <a href="#" class="template-use-btn" data-template-id="{{ habit.id }}">Use</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="habit-card">
+              <i class="fa-solid fa-book-open"></i>
+              <h3>Read 20 min/day</h3>
+              <p>🔥 12 days in a row</p>
             </div>
+            <div class="habit-card">
+              <i class="fa-solid fa-dumbbell"></i>
+              <h3>Exercise</h3>
+              <p>🔥 12 days in a row</p>
+            </div>
+            <div class="habit-card">
+              <i class="fa-solid fa-spa"></i>
+              <h3>Meditate</h3>
+              <p>🔥 12 days in a row</p>
+            </div>
+          {% endif %}
         </div>
+      </div>
     </div>
+
+    <div class="monthly-progress-container">
+      <svg class="progress-ring" width="100" height="100">
+        <circle class="progress-ring__background" stroke="#7A7A7A" stroke-width="8" fill="transparent" r="40" cx="50" cy="50" />
+        <circle class="progress-ring__progress" stroke="#D4AF37" stroke-width="4" fill="transparent" stroke-linecap="round" r="40" cx="50" cy="50" />
+      </svg>
+      <div class="progress-text">
+        Monthly<br />progress
+      </div>
+    </div>
+  </div> <!-- Закрываем welcome-section -->
+
+  <div class="mygoals-section">
+    <div style="clear: both;"></div> <!-- Добавляем элемент для очистки float -->
+    <h2 class="section-title">My Goals</h2>
+    <div class="goal-cards">
+      {% if user_goals %}
+        {% for goal in user_goals %}
+          <div class="goal-card {% if goal.completed %}completed{% endif %}" data-goal-id="{{ goal.id }}">
+            <h3>{{ goal.name }}</h3>
+            <div class="goal-status {% if goal.completed %}completed{% endif %}">
+              {% if goal.completed %}
+                <i class="fa-solid fa-check-circle"></i> Completed
+              {% else %}
+                <i class="fa-regular fa-circle"></i> In Progress
+              {% endif %}
+            </div>
+
+            {% if goal.subgoals.all %}
+              <div class="progress-bar">
+                <div class="progress" style="width: {{ goal.get_progress_percent }}%;"></div>
+              </div>
+              <div class="percent">{{ goal.get_progress_percent }}%</div>
+
+              <ul class="subgoals-list">
+                {% for subgoal in goal.subgoals.all %}
+                  <li class="subgoal-item" data-index="{{ forloop.counter0 }}">
+                    <span class="subgoal-checkbox"
+                      data-subgoal-id="{{ subgoal.id }}"
+                      data-completed="{% if subgoal.completed %}
+                        true
+                      {% else %}
+                        false
+                      {% endif %}">
+                      {% if subgoal.completed %}
+                        <i class="fa-solid fa-square-check"></i>
+                      {% else %}
+                        <i class="fa-regular fa-square"></i>
+                      {% endif %}
+                    </span>
+                    <span class="subgoal-name {% if subgoal.completed %}completed{% endif %}">{{ subgoal.name }}</span>
+                  </li>
+                {% endfor %}
+                {% if goal.subgoals.all.count > 3 %}
+                  <li class="more-subgoals-indicator">
+                    <span class="more-text">+ {{ goal.subgoals.all.count|add:'-3' }} more...</span>
+                    <button class="show-all-subgoals-btn" type="button">Show all</button>
+                  </li>
+                {% endif %}
+              </ul>
+            {% else %}
+              <div class="progress-bar">
+                <div class="progress" style="width: 0%;"></div>
+              </div>
+              <div class="percent">0%</div>
+              <p class="no-subgoals">No tasks yet</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% elif template_goals %}
+        <div class="goals-template-message">
+          <p>Start achieving goals with our templates:</p>
+        </div>
+        {% for goal in template_goals %}
+          <div class="goal-card template">
+            <h3>{{ goal.name }}</h3>
+            <p>{{ goal.description|truncatechars:50 }}</p>
+            <div class="progress-bar">
+              <div class="progress" style="width: 0%;"></div>
+            </div>
+            <a href="#" class="template-use-btn" data-template-id="{{ goal.id }}">Use</a>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="goal-card">
+          <h3>Run a marathon</h3>
+          <div class="progress-bar">
+            <div class="progress" style="width: 30%;"></div>
+          </div>
+          <ul>
+            <li>✅ Buy shoes</li>
+            <li>✅ Run 5km</li>
+          </ul>
+          <span class="percent">30%</span>
+        </div>
+        <div class="goal-card">
+          <h3>Learn React</h3>
+          <div class="progress-bar">
+            <div class="progress" style="width: 50%;"></div>
+          </div>
+          <ul>
+            <li>✅ Finish tutorial</li>
+            <li>⬜ Build app</li>
+          </ul>
+          <span class="percent">50%</span>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="stats-section">
+    <h2 class="section-title">Statistics & Progress</h2>
+    <div class="stats-dashboard">
+      <canvas id="progressChart"></canvas>
+
+      <!-- Минималистичный календарь -->
+      <div class="mini-calendar">
+        <div class="calendar-header">
+          <span class="month">July 2023</span>
+        </div>
+        <div class="calendar-days">
+          <div class="weekdays">
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+            <span>Sun</span>
+          </div>
+          <div class="days">
+            <!-- Дни календаря будут добавлены через JS -->
+            <div class="day">1</div>
+            <div class="day">2</div>
+            <div class="day active">3</div>
+            <div class="day">4</div>
+            <div class="day">5</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress-circle">
+        <svg class="circle" width="80" height="80">
+          <circle class="circle-bg" cx="40" cy="40" r="35" stroke="#555" stroke-width="8" fill="none"></circle>
+          <circle class="circle-progress" cx="40" cy="40" r="35" stroke="#FFD700" stroke-width="8" fill="none" stroke-dasharray="220" stroke-dashoffset="60"></circle>
+        </svg>
+        <span class="circle-text">72%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal window for creating a new goal or habit -->
+  <div id="create-modal" class="modal">
+    <div class="modal-content">
+      <span class="close create-modal-close">&times;</span>
+
+      <!-- Step 1: Choose type (goal or habit) -->
+      <div class="create-step" id="create-step-1">
+        <h2>What would you like to create?</h2>
+        <div class="create-options">
+          <div class="create-option" data-option="habit">
+            <i class="fa-solid fa-calendar-check"></i>
+            <h3>Habit</h3>
+            <p>Regular activities to form useful habits</p>
+          </div>
+          <div class="create-option" data-option="goal">
+            <i class="fa-solid fa-bullseye"></i>
+            <h3>Goal</h3>
+            <p>Specific tasks with subtasks and deadlines</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Choose from template or create your own -->
+      <div class="create-step" id="create-step-2-habit" style="display: none;">
+        <h2>New Habit</h2>
+        <div class="create-template-option">
+          <button class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back</button>
+          <div class="template-toggle">
+            <button class="template-btn active" data-template-type="predefined">Choose from templates</button>
+            <button class="template-btn" data-template-type="custom">Create your own</button>
+          </div>
+
+          <!-- Predefined habit templates -->
+          <div class="template-container" id="habit-templates">
+            <div class="template-list">
+              {% if template_habits %}
+                {% for habit in template_habits %}
+                  <div class="template-item" data-template-id="{{ habit.id }}">
+                    {% if habit.name|lower == 'read' or habit.name|lower == 'reading' %}
+                      <i class="fa-solid fa-book-open"></i>
+                    {% elif habit.name|lower == 'exercise' or habit.name|lower == 'workout' or habit.name|lower == 'gym' %}
+                      <i class="fa-solid fa-dumbbell"></i>
+                    {% elif habit.name|lower == 'meditate' or habit.name|lower == 'meditation' %}
+                      <i class="fa-solid fa-spa"></i>
+                    {% elif habit.name|lower == 'water' or habit.name|lower == 'hydrate' %}
+                      <i class="fa-solid fa-glass-water"></i>
+                    {% elif habit.name|lower == 'sleep' %}
+                      <i class="fa-solid fa-bed"></i>
+                    {% else %}
+                      <i class="fa-solid fa-check-circle"></i>
+                    {% endif %}
+                    <h3>{{ habit.name }}</h3>
+                    <p>{{ habit.description|truncatechars:100 }}</p>
+                    <p>Frequency: {{ habit.frequency }}</p>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="template-item" data-template-id="reading">
+                  <i class="fa-solid fa-book-open"></i>
+                  <h3>Reading</h3>
+                  <p>Read books daily for development and knowledge</p>
+                  <p>Frequency: Daily</p>
+                </div>
+                <div class="template-item" data-template-id="exercise">
+                  <i class="fa-solid fa-dumbbell"></i>
+                  <h3>Exercise</h3>
+                  <p>Regular physical exercise to maintain health</p>
+                  <p>Frequency: 3 times per week</p>
+                </div>
+                <div class="template-item" data-template-id="meditation">
+                  <i class="fa-solid fa-spa"></i>
+                  <h3>Meditation</h3>
+                  <p>Daily meditation to reduce stress and improve concentration</p>
+                  <p>Frequency: Daily</p>
+                </div>
+              {% endif %}
+            </div>
+            <button class="confirm-btn" id="confirm-habit-template" disabled>Create Habit</button>
+          </div>
+
+          <!-- Form for creating your own habit -->
+          <div class="template-container" id="habit-custom" style="display: none;">
+            <form id="custom-habit-form">
+              <div class="form-group">
+                <label for="habit-name">Habit Name*</label>
+                <input type="text" id="habit-name" name="name" required placeholder="Example: Morning Run" />
+              </div>
+
+              <div class="form-group">
+                <label for="habit-description">Description</label>
+                <textarea id="habit-description" name="description" rows="3" placeholder="Detailed description of the habit"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="habit-frequency">Frequency*</label>
+                <select id="habit-frequency" name="frequency" required>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+
+              <button type="submit" class="confirm-btn">Create Habit</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Creating a goal -->
+      <div class="create-step" id="create-step-2-goal" style="display: none;">
+        <h2>New Goal</h2>
+        <div class="create-template-option">
+          <button class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back</button>
+          <div class="template-toggle">
+            <button class="template-btn active" data-template-type="predefined">Choose from templates</button>
+            <button class="template-btn" data-template-type="custom">Create your own</button>
+          </div>
+
+          <!-- Predefined goal templates -->
+          <div class="template-container" id="goal-templates">
+            <div class="template-list">
+              {% if template_goals %}
+                {% for goal in template_goals %}
+                  <div class="template-item" data-template-id="{{ goal.id }}">
+                    <i class="fa-solid fa-bullseye"></i>
+                    <h3>{{ goal.name }}</h3>
+                    <p>{{ goal.description|truncatechars:100 }}</p>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="template-item" data-template-id="marathon">
+                  <i class="fa-solid fa-running"></i>
+                  <h3>Run a Marathon</h3>
+                  <p>Prepare for and complete a full marathon with gradually increasing distance</p>
+                </div>
+                <div class="template-item" data-template-id="language">
+                  <i class="fa-solid fa-language"></i>
+                  <h3>Learn a New Language</h3>
+                  <p>Master basic vocabulary and grammar of a new foreign language</p>
+                </div>
+                <div class="template-item" data-template-id="project">
+                  <i class="fa-solid fa-laptop-code"></i>
+                  <h3>Create a Personal Project</h3>
+                  <p>Plan and implement a personal creative or technical project</p>
+                </div>
+              {% endif %}
+            </div>
+            <button class="confirm-btn" id="confirm-goal-template" disabled>Create Goal</button>
+          </div>
+
+          <!-- Form for creating your own goal -->
+          <div class="template-container" id="goal-custom" style="display: none;">
+            <form id="custom-goal-form">
+              <div class="form-group">
+                <label for="goal-name">Goal Name*</label>
+                <input type="text" id="goal-name" name="name" required placeholder="Example: Create Web App" />
+              </div>
+
+              <div class="form-group">
+                <label for="goal-description">Description</label>
+                <textarea id="goal-description" name="description" rows="3" placeholder="Detailed description of the goal"></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="goal-deadline">Deadline</label>
+                <input type="date" id="goal-deadline" name="deadline" />
+              </div>
+
+              <div class="form-group">
+                <label>Subtasks</label>
+                <div id="subgoal-container">
+                  <div class="subgoal-item">
+                    <input type="text" name="subgoals[]" placeholder="Subtask" required />
+                    <button type="button" class="remove-subgoal"><i class="fa-solid fa-times"></i></button>
+                  </div>
+                </div>
+                <button type="button" id="add-subgoal" class="add-btn"><i class="fa-solid fa-plus"></i> Add Subtask</button>
+              </div>
+
+              <button type="submit" class="confirm-btn">Create Goal</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}

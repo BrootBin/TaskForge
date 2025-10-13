@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from main.models import TelegramProfile, Pending2FA
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.db import IntegrityError
 
 # --- Logging ---
 logging.basicConfig(
@@ -30,7 +31,25 @@ TOKEN = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
 # --- Commands ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Hi! Send /bind <key> to connect your account.")
+    await update.message.reply_text("👋 Hi! Send /bind <key> to connect your account.\n\nAvailable commands:\n/help - Show this help\n/bind <key> - Link your TaskForge account\n/unbind - Unlink your account")
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = """
+🤖 **TaskForge Bot Commands:**
+
+/start - Welcome message
+/help - Show this help
+/bind <key> - Link your TaskForge account with the provided key
+/unbind - Unlink your Telegram account from TaskForge
+/notify - Test notification (for testing)
+
+💡 **How to link your account:**
+1. Log in to TaskForge website
+2. Copy your binding key from profile settings
+3. Send `/bind <your_key>` to this bot
+4. Enable notifications and 2FA in your profile settings
+    """
+    await update.message.reply_text(help_text, parse_mode="Markdown")
 
 async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) != 1:
@@ -45,11 +64,30 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ This Telegram account is already linked!")
             return
 
-        profile.telegram_id = str(update.effective_user.id)
-        profile.connected = True
-        profile.bind_code = None
-        await sync_to_async(profile.save)()
-        await update.message.reply_text("✅ Account successfully linked! You can now enable notifications and 2FA.")
+        # Перевіряємо чи цей telegram_id вже прив'язаний до іншого аккаунта
+        telegram_id = str(update.effective_user.id)
+        existing_profile = await sync_to_async(lambda: TelegramProfile.objects.filter(telegram_id=telegram_id).first())()
+        
+        if existing_profile and existing_profile != profile:
+            await update.message.reply_text("❌ This Telegram account is already linked to another user!")
+            return
+
+        try:
+            profile.telegram_id = telegram_id
+            profile.connected = True
+            profile.bind_code = None
+            await sync_to_async(profile.save)()
+            await update.message.reply_text("✅ Account successfully linked! You can now enable notifications and 2FA.")
+        except IntegrityError as e:
+            # Обробка помилки дублювання telegram_id
+            if "telegram_id" in str(e) and "unique constraint" in str(e):
+                await update.message.reply_text("❌ This Telegram account is already linked to another user!")
+            else:
+                await update.message.reply_text("❌ An error occurred while linking your account. Please try again.")
+            logging.error(f"IntegrityError linking Telegram account: {e}")
+        except Exception as e:
+            await update.message.reply_text("❌ An unexpected error occurred. Please try again.")
+            logging.error(f"Unexpected error linking Telegram account: {e}")
     else:
         await update.message.reply_text("❌ Invalid or expired key.")
 
@@ -91,8 +129,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             action = parts[0]
             username = "_".join(parts[1:])
         else:
-            logging.error(f"Неизвестный формат callback данных: {callback_data}")
-            await query.edit_message_text("❌ Неверный формат данных запроса.")
+            logging.error(f"Невідомий формат callback даних: {callback_data}")
+            await query.edit_message_text("❌ Невірний формат даних запиту.")
             return
         
         logging.info(f"Обработка: действие={action}, пользователь={username}, telegram_id={telegram_id}")
@@ -134,10 +172,34 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Test message!")
 
+# --- Unbind command ---
+async def unbind(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = str(update.effective_user.id)
+    profile = await sync_to_async(lambda: TelegramProfile.objects.filter(telegram_id=telegram_id).first())()
+    
+    if profile:
+        try:
+            profile.telegram_id = None
+            profile.connected = False
+            profile.two_factor_enabled = False
+            # Генеруємо новий код для повторного підключення
+            import random
+            import string
+            profile.bind_code = ''.join(random.choices(string.digits, k=6))
+            await sync_to_async(profile.save)()
+            await update.message.reply_text("✅ Account unlinked successfully! Use /bind <new_key> if you want to link again.")
+        except Exception as e:
+            await update.message.reply_text("❌ An error occurred while unlinking your account.")
+            logging.error(f"Error unlinking Telegram account: {e}")
+    else:
+        await update.message.reply_text("❌ No linked account found for this Telegram ID.")
+
 # --- Application setup ---
 application = ApplicationBuilder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("help", help_command))
 application.add_handler(CommandHandler("bind", bind))
+application.add_handler(CommandHandler("unbind", unbind))
 application.add_handler(CommandHandler("notify", notify))
 application.add_handler(CallbackQueryHandler(button_callback))
 

@@ -1,0 +1,90 @@
+/* 
+ * Навігаційна панель
+ * TaskForge - верхня навігація
+ */
+
+/* Навбар */
+header.nav-bar {
+	width: calc(90% - 40px);
+	margin: 20px auto 0 auto;
+	background-color: var(--bg-main);
+	padding: 15px 20px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 2px solid var(--bg-dark);
+	border-top-left-radius: var(--border-radius-md);
+	border-top-right-radius: var(--border-radius-md);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-links {
+	display: flex;
+	gap: 20px;
+}
+
+.nav-links ul {
+	display: flex;
+	gap: 60px;
+}
+
+.nav-links ul li a {
+	color: var(--text-primary);
+	font-weight: 500;
+	transition: color 0.3s;
+}
+
+.nav-links ul li a:hover {
+	color: var(--primary-hover);
+}
+
+/* Логотип */
+.logo {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.logo-img {
+	height: 70px;
+	width: 70px;
+}
+
+/* Іконки в навбарі */
+#bell {
+	padding-top: 10px;
+	font-size: 24px;
+	color: var(--primary);
+	cursor: pointer;
+}
+
+.profile-icon {
+	padding-top: 10px;
+	font-size: 24px;
+	margin-left: 20px;
+	cursor: pointer;
+	color: var(--primary);
+}
+
+/* Контейнер сповіщень */
+.notifications-container {
+	position: relative;
+}
+
+/* Адаптивність навбару */
+@media (max-width: 768px) {
+	header.nav-bar {
+		flex-direction: column;
+		padding: 10px;
+	}
+
+	.nav-links ul {
+		gap: 30px;
+		margin-top: 10px;
+		justify-content: center;
+	}
+
+	.logo {
+		margin-bottom: 10px;
+	}
+}

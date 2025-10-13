@@ -4,7 +4,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 import asyncio
 
 async def send_2fa_async(telegram_id, username):
-    """Асинхронно отправляет сообщение с кнопками 2FA."""
+    """Асинхронно надсилає повідомлення з кнопками 2FA."""
     bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
     keyboard = [[
         InlineKeyboardButton("✅ Approve Login", callback_data=f"2fa_approve_{username}"),
@@ -20,5 +20,5 @@ async def send_2fa_async(telegram_id, username):
 
 @shared_task
 def send_2fa_request(telegram_id, username):
-    """Celery-задача для запуска асинхронной отправки 2FA."""
+    """Celery-завдання для запуску асинхронного надсилання 2FA."""
     asyncio.run(send_2fa_async(telegram_id, username))

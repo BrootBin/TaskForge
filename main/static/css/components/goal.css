@@ -1,0 +1,60 @@
+.goal-status {
+	display: inline-flex;
+	align-items: center;
+	margin-top: 5px;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 0.85rem;
+	font-weight: 500;
+	transition: all 0.3s ease;
+}
+
+.goal-status i {
+	margin-right: 5px;
+}
+
+.goal-status.completed {
+	background-color: var(--primary-very-light);
+	color: var(--success);
+}
+
+/* Анимация для цели при её завершении */
+@keyframes goal-completed-pulse {
+	0% {
+		transform: scale(1);
+		box-shadow: var(--shadow-normal);
+	}
+
+	50% {
+		transform: scale(1.02);
+		box-shadow: 0 6px 16px rgba(67, 160, 71, 0.2);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: var(--shadow-normal);
+	}
+}
+
+.goal-card.just-completed {
+	animation: goal-completed-pulse 1s ease forwards;
+}
+
+/* Стили для карточки завершенной цели */
+.goal-card.completed {
+	border-left: 4px solid var(--success);
+}
+
+.goal-card.completed h3 {
+	color: var(--success);
+}
+
+/* Додаємо ефекти при наведенні на картку цілі */
+.goal-card {
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.goal-card:hover {
+	transform: translateY(-3px);
+	box-shadow: var(--shadow-card-hover);
+}

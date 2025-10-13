@@ -1,0 +1,31 @@
+/* 
+ * Виправлення для макету
+ * TaskForge - фікси позиціонування елементів
+ */
+
+/* Фікс для секції цілей */
+.mygoals-section {
+	display: block;
+	clear: both;
+	width: 100%;
+	margin-top: 30px;
+	overflow: hidden;
+}
+
+/* Фікс для карток цілей, коли їх мало */
+.goal-cards:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+/* Фікс для карток цілей в одиночній колонці */
+@media (max-width: 768px) {
+	.goal-card {
+		width: calc(100% - 24px);
+		/* Ширина картки за вирахуванням падінгу */
+		max-width: 400px;
+		margin-left: auto;
+		margin-right: auto;
+	}
+}

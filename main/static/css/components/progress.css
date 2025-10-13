@@ -1,0 +1,132 @@
+/* 
+ * Элементы прогресса
+ * TaskForge - круги и индикаторы прогресса
+ */
+
+/* === Monthly Progress Circle === */
+.monthly-progress-container {
+	width: 100px;
+	height: 100px;
+	position: relative;
+	margin-right: 15px;
+	align-self: flex-start;
+	margin-top: 20px;
+	z-index: 1;
+	/* Важливо для коректного відображення */
+	float: right;
+	/* Додаємо float для коректного позиціонування */
+}
+
+.welcome-section .monthly-progress-container {
+	position: absolute;
+	top: 0;
+	right: 0;
+}
+
+.progress-ring {
+	transform: rotate(-90deg);
+}
+
+.progress-ring__background {
+	stroke: #333;
+	opacity: 0.3;
+}
+
+.progress-ring__progress {
+	stroke-dasharray: 251;
+	stroke-dashoffset: 251;
+	transition: stroke-dashoffset 1.2s ease;
+	transform-origin: 50% 50%;
+}
+
+.progress-text {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: var(--primary);
+	font-weight: 600;
+	font-size: 14px;
+	text-align: center;
+	width: 100%;
+	line-height: 1.2;
+	margin: 0;
+	padding: 0;
+}
+
+/* Улучшенный центрированный текст в кругах прогресса */
+.monthly-progress-container .progress-text {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	height: 50px;
+	width: 50px;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.2;
+	text-align: center;
+	white-space: normal;
+	padding: 0;
+	margin: 0;
+}
+
+/* === Progress Circle in Dashboard === */
+.progress-circle {
+	position: relative;
+	width: 80px;
+	height: 80px;
+	margin-right: 10px;
+}
+
+.circle-bg {
+	opacity: 0.2;
+}
+
+.circle-progress {
+	stroke-dasharray: 220;
+	stroke-dashoffset: 220;
+	transition: stroke-dashoffset 1s ease;
+}
+
+.circle-text {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: var(--primary);
+	font-weight: bold;
+	font-size: 16px;
+	text-align: center;
+	width: 100%;
+}
+
+/* Стили круга прогресса в дашборде статистики */
+.stats-dashboard .progress-circle {
+	width: 100px;
+	height: 100px;
+	margin: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.stats-dashboard .circle-text {
+	font-size: 18px;
+}
+
+/* Медиа-запросы для элементов прогресса */
+@media (max-width: 768px) {
+	.monthly-progress-container.absolute {
+		position: relative;
+		top: 0;
+		right: 0;
+		margin: 20px auto;
+	}
+
+	.stats-dashboard .progress-circle {
+		width: 90px;
+		height: 90px;
+		margin-top: 10px;
+	}
+}

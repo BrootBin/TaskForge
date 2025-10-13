@@ -9,7 +9,7 @@ function App() {
     const ws = new WebSocket('ws://localhost:8000/ws/notifications/');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      alert('Новое уведомление: ' + data.message);
+      alert('Нове сповіщення: ' + data.message);
     };
     return () => ws.close();
   }, []);

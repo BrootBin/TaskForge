@@ -7,6 +7,7 @@ class TelegramProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='telegram_profile')
     telegram_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
     connected = models.BooleanField(default=False)
+    notifications_enabled = models.BooleanField(default=True) 
     two_factor_enabled = models.BooleanField(default=False)
     bind_code = models.CharField(max_length=6, null=True, blank=True)
 
@@ -65,6 +66,13 @@ class Goal(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     notify_before_days = models.IntegerField(default=1)
 
+    def get_progress_percent(self):
+        """Розраховує відсоток виконання цілі на основі завершених підцілей"""
+        total_subgoals = self.subgoals.count()
+        if total_subgoals == 0:
+            return 0
+        completed_subgoals = self.subgoals.filter(completed=True).count()
+        return round((completed_subgoals / total_subgoals) * 100)
 
     def __str__(self):
         return self.name
@@ -81,6 +89,14 @@ class SubGoal(models.Model):
 class GoalTemplate(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+    
+    
+class SubGoalTemplate(models.Model):
+    template = models.ForeignKey(GoalTemplate, on_delete=models.CASCADE, related_name='subgoals')
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
@@ -102,7 +118,7 @@ class Notification(models.Model):
 
     def should_send_telegram(self):
         profile = getattr(self.user, 'telegram_profile', None)
-        return self.send_telegram and profile and profile.connected
+        return self.send_telegram and profile and profile.connected and profile.notifications_enabled
 
 
 class Pending2FA(models.Model):

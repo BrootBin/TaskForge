@@ -23,12 +23,12 @@ def send_telegram_notification(user, message):
     from main.telegram_bot import TOKEN
     from telegram import Bot
     profile = getattr(user, 'telegram_profile', None)
-    if profile and profile.connected and profile.telegram_id:
+    if profile and profile.connected and profile.telegram_id and profile.notifications_enabled:
         bot = Bot(token=TOKEN)
         try:
             bot.send_message(chat_id=profile.telegram_id, text=message)
         except Exception as e:
-            print(f"Ошибка отправки Telegram: {e}")
+            print(f"Помилка відправки Telegram: {e}")
 
 
 def check_user_habits(user):

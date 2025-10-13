@@ -1,0 +1,59 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}" />
+  <style>
+    .subgoals-field textarea {
+      width: 100%;
+      height: 100px;
+    }
+    .help-text {
+      color: #666;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <form method="post">
+      {% csrf_token %}
+      <fieldset class="module aligned">
+        <div class="form-row">
+          <div class="field-box">
+            <label for="id_name">Name:</label>
+            {{ form.name }}
+            {% if form.name.errors %}
+              <p class="errornote">{{ form.name.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field-box">
+            <label for="id_description">Description:</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+              <p class="errornote">{{ form.description.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="form-row subgoals-field">
+          <div class="field-box">
+            <label for="id_subgoal_names">Subgoals:</label>
+            {{ form.subgoal_names }}
+            <p class="help-text">{{ form.subgoal_names.help_text }}</p>
+            {% if form.subgoal_names.errors %}
+              <p class="errornote">{{ form.subgoal_names.errors.0 }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </fieldset>
+      <div class="submit-row">
+        <input type="submit" value="Save" class="default" />
+      </div>
+    </form>
+  </div>
+{% endblock %}
