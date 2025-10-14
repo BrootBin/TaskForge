@@ -13,6 +13,10 @@ import json
 import os
 
 def home(request):
+    print(f"Home view called. User authenticated: {request.user.is_authenticated}")
+    if request.user.is_authenticated:
+        print(f"Authenticated user: {request.user.username}")
+    
     telegram_code = None
     telegram_notify_enabled = False
     two_factor_enabled = False
@@ -163,14 +167,67 @@ def telegram_2fa_confirm(request):
 def telegram_2fa_status(request):
     username = request.GET.get("username")
     if not username:
-        return JsonResponse({"confirmed": False})
+        return JsonResponse({"authenticated": False, "confirmed": False, "status": "error"})
 
     try:
         user = User.objects.get(username=username)
         pending = Pending2FA.objects.filter(user=user, confirmed=True).first()
-        return JsonResponse({"confirmed": bool(pending)})
+        is_confirmed = bool(pending)
+        
+        
+        # Якщо підтверджено, авторизуємо користувача та видаляємо запис
+        if is_confirmed and pending:
+            login(request, user)
+            request.session.save()
+            pending.delete()
+            print(f"User {username} automatically logged in via 2FA status check")
+        
+        return JsonResponse({
+            "authenticated": is_confirmed, 
+            "confirmed": is_confirmed,
+            "status": "approved" if is_confirmed else "pending"
+        })
     except User.DoesNotExist:
-        return JsonResponse({"confirmed": False})
+        return JsonResponse({
+            "authenticated": False, 
+            "confirmed": False,
+            "status": "error"
+        })
+
+@csrf_exempt
+def complete_2fa_login(request):
+    """API для завершення 2FA авторизації"""
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "Invalid method"})
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        
+        if not username:
+            return JsonResponse({"status": "error", "message": "Username required"})
+        
+        user = User.objects.get(username=username)
+        pending = Pending2FA.objects.filter(user=user, confirmed=True).first()
+        
+        if pending:
+            # Аутентифікуємо користувача
+            login(request, user)
+            # Зберігаємо сесію
+            request.session.save()
+            # Видаляємо запис про очікування 2FA
+            pending.delete()
+            print(f"User {username} successfully logged in via 2FA")
+            return JsonResponse({"status": "success", "redirect_url": "/"})
+        else:
+            return JsonResponse({"status": "error", "message": "2FA not confirmed"})
+    
+    except User.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "User not found"})
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
 
 @login_required
 def logout_view(request):

@@ -52,131 +52,159 @@ function initSubgoalHandlers() {
 	initGoalCardHandlers();
 
 	subgoalCheckboxes.forEach(checkbox => {
-		// Позначаємо, що обробник додано
-		checkbox.setAttribute('data-handler-attached', 'true');
-		console.log('Додаємо обробник для підцілі:', checkbox.dataset.subgoalId);
+		addSubgoalClickHandler(checkbox);
+	});
+}
 
-		checkbox.addEventListener('click', async function (event) {
-			console.log('Клік по підцілі:', this.dataset.subgoalId);
+// Загальна функція для додавання обробника кліку на підціль
+function addSubgoalClickHandler(checkbox) {
+	// Якщо обробник вже додано, пропускаємо
+	if (checkbox.hasAttribute('data-handler-attached')) {
+		return;
+	}
 
-			// Запобігаємо множинним клікам
-			if (this.hasAttribute('data-processing')) {
-				console.log('Запит вже обробляється, ігноруємо клік');
-				return;
+	// Позначаємо, що обробник додано
+	checkbox.setAttribute('data-handler-attached', 'true');
+	console.log('Додаємо обробник для підцілі:', checkbox.dataset.subgoalId);
+
+	// Ініціалізуємо стан
+	const completedValue = checkbox.dataset.completed ? checkbox.dataset.completed.trim() : 'false';
+	const isCompleted = completedValue === 'true';
+	const subgoalElement = checkbox.parentElement;
+	const nameElement = subgoalElement.querySelector('.subgoal-name');
+	const iconElement = checkbox.querySelector('i');
+
+	console.log(`Ініціалізація підцілі ${checkbox.dataset.subgoalId}: completed="${completedValue}", isCompleted=${isCompleted}`);
+
+	if (isCompleted) {
+		iconElement.className = 'fa-solid fa-square-check';
+		nameElement.classList.add('completed');
+	} else {
+		iconElement.className = 'fa-regular fa-square';
+		nameElement.classList.remove('completed');
+	}
+
+	// Додаємо обробник кліку
+	checkbox.addEventListener('click', async function (event) {
+		console.log('Клік по підцілі:', this.dataset.subgoalId);
+
+		// Запобігаємо множинним клікам
+		if (this.hasAttribute('data-processing')) {
+			console.log('Запит вже обробляється, ігноруємо клік');
+			return;
+		}
+		this.setAttribute('data-processing', 'true');
+		console.log('Починаємо обробку кліку');
+
+		const subgoalId = this.dataset.subgoalId;
+		const currentCompleted = (this.dataset.completed ? this.dataset.completed.trim() : 'false') === 'true';
+		const subgoalElement = this.parentElement;
+		const nameElement = subgoalElement.querySelector('.subgoal-name');
+		const iconElement = this.querySelector('i');
+
+		// Оптимістичний UI - одразу змінюємо зовнішній вигляд
+		if (currentCompleted) {
+			// Змінюємо на невиконану
+			iconElement.className = 'fa-regular fa-square';
+			nameElement.classList.remove('completed');
+			this.dataset.completed = 'false';
+			this.classList.add('just-unchecked');
+			// Видаляємо клас анімації через деякий час
+			setTimeout(() => {
+				this.classList.remove('just-unchecked');
+			}, 200);
+		} else {
+			// Змінюємо на виконану
+			iconElement.className = 'fa-solid fa-square-check';
+			nameElement.classList.add('completed');
+			this.dataset.completed = 'true';
+			this.classList.add('just-checked');
+			// Видаляємо клас анімації через деякий час
+			setTimeout(() => {
+				this.classList.remove('just-checked');
+			}, 300);
+		}
+
+		// Відправляємо запит на сервер
+		try {
+			const response = await fetch('/api/toggle-subgoal/', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-CSRFToken': getCSRFToken(),
+				},
+				body: JSON.stringify({ subgoal_id: subgoalId })
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.message || 'An error occurred while updating subgoal');
 			}
-			this.setAttribute('data-processing', 'true');
-			console.log('Починаємо обробку кліку');
 
-			const subgoalId = this.dataset.subgoalId;
-			const currentCompleted = (this.dataset.completed ? this.dataset.completed.trim() : 'false') === 'true';
-			const subgoalElement = this.parentElement;
-			const nameElement = subgoalElement.querySelector('.subgoal-name');
-			const iconElement = this.querySelector('i');
+			// Оновлюємо dataset з актуальним станом
+			this.dataset.completed = data.completed.toString();
 
-			// Оптимістичний UI - одразу змінюємо зовнішній вигляд
-			if (currentCompleted) {
-				// Змінюємо на невиконану
-				iconElement.className = 'fa-regular fa-square';
-				nameElement.classList.remove('completed');
-				this.dataset.completed = 'false';
-				this.classList.add('just-unchecked');
-				// Видаляємо клас анімації через деякий час
-				setTimeout(() => {
-					this.classList.remove('just-unchecked');
-				}, 200);
+			// Оновлюємо прогрес цілі
+			updateGoalProgress(subgoalElement);
+
+			// Плануємо переупорядкування підцілей через 15 секунд
+			const goalCard = subgoalElement.closest('.goal-card');
+			if (goalCard) {
+				scheduleSubgoalReordering(goalCard);
+			}
+
+			// Якщо ціль була повністю завершена, можна оновити її відображення
+			if (data.goal_completed !== undefined) {
+				// Знайдемо блок цілі та оновимо його статус
+				const goalCard = subgoalElement.closest('.goal-card');
+				if (goalCard) {
+					const goalStatus = goalCard.querySelector('.goal-status');
+					if (goalStatus) {
+						if (data.goal_completed) {
+							goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Completed';
+							goalStatus.classList.add('completed');
+							goalCard.classList.add('completed');
+							goalCard.classList.add('just-completed');
+
+							// Видаляємо клас анімації через деякий час
+							setTimeout(() => {
+								goalCard.classList.remove('just-completed');
+							}, 1000);
+
+							// Показуємо спеціальне сповіщення про завершення цілі
+							showNotification('Congratulations! Goal completed! 🎉', 'success');
+						} else {
+							goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> In progress';
+							goalStatus.classList.remove('completed');
+							goalCard.classList.remove('completed');
+						}
+					}
+				}
 			} else {
-				// Змінюємо на виконану
+				// Звичайне сповіщення про оновлення підцілі (показуємо тільки якщо ціль не завершена)
+				showNotification('Статус підцілі оновлено', 'success');
+			}
+		} catch (error) {
+			console.error('Помилка при оновленні підцілі:', error);
+
+			// Повертаємо UI у вихідний стан у випадку помилки
+			if (currentCompleted) {
 				iconElement.className = 'fa-solid fa-square-check';
 				nameElement.classList.add('completed');
 				this.dataset.completed = 'true';
-				this.classList.add('just-checked');
-				// Видаляємо клас анімації через деякий час
-				setTimeout(() => {
-					this.classList.remove('just-checked');
-				}, 300);
+			} else {
+				iconElement.className = 'fa-regular fa-square';
+				nameElement.classList.remove('completed');
+				this.dataset.completed = 'false';
 			}
 
-			// Відправляємо запит на сервер
-			try {
-				const response = await fetch('/api/toggle-subgoal/', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'X-CSRFToken': getCSRFToken(),
-					},
-					body: JSON.stringify({ subgoal_id: subgoalId })
-				});
-
-				const data = await response.json();
-
-				if (!response.ok) {
-					throw new Error(data.message || 'An error occurred while updating subgoal');
-				}
-
-				// Оновлюємо dataset з актуальним станом
-				this.dataset.completed = data.completed.toString();
-
-				// Оновлюємо прогрес цілі
-				updateGoalProgress(subgoalElement);
-
-				// Плануємо переупорядкування підцілей через 30 секунд
-				const goalCard = subgoalElement.closest('.goal-card');
-				if (goalCard) {
-					scheduleSubgoalReordering(goalCard);
-				}
-
-				// Якщо ціль була повністю завершена, можна оновити її відображення
-				if (data.goal_completed !== undefined) {
-					// Знайдемо блок цілі та оновимо його статус
-					const goalCard = subgoalElement.closest('.goal-card');
-					if (goalCard) {
-						const goalStatus = goalCard.querySelector('.goal-status');
-						if (goalStatus) {
-							if (data.goal_completed) {
-								goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Завершена';
-								goalStatus.classList.add('completed');
-								goalCard.classList.add('completed');
-								goalCard.classList.add('just-completed');
-
-								// Видаляємо клас анімації через деякий час
-								setTimeout(() => {
-									goalCard.classList.remove('just-completed');
-								}, 1000);
-
-								// Показуємо спеціальне сповіщення про завершення цілі
-								showNotification('Congratulations! Goal completed! 🎉', 'success');
-							} else {
-								goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> У процесі';
-								goalStatus.classList.remove('completed');
-								goalCard.classList.remove('completed');
-							}
-						}
-					}
-				} else {
-					// Звичайне сповіщення про оновлення підцілі (показуємо тільки якщо ціль не завершена)
-					showNotification('Статус підцілі оновлено', 'success');
-				}
-			} catch (error) {
-				console.error('Помилка при оновленні підцілі:', error);
-
-				// Повертаємо UI у вихідний стан у випадку помилки
-				if (currentCompleted) {
-					iconElement.className = 'fa-solid fa-square-check';
-					nameElement.classList.add('completed');
-					this.dataset.completed = 'true';
-				} else {
-					iconElement.className = 'fa-regular fa-square';
-					nameElement.classList.remove('completed');
-					this.dataset.completed = 'false';
-				}
-
-				// Показуємо сповіщення про помилку
-				showNotification('Помилка при оновленні підцілі: ' + error.message, 'error');
-			} finally {
-				// Прибираємо прапор обробки
-				this.removeAttribute('data-processing');
-			}
-		});
+			// Показуємо сповіщення про помилку
+			showNotification('Помилка при оновленні підцілі: ' + error.message, 'error');
+		} finally {
+			// Прибираємо прапор обробки
+			this.removeAttribute('data-processing');
+		}
 	});
 }
 
@@ -365,10 +393,10 @@ function scheduleSubgoalReordering(goalCard) {
 		clearTimeout(goalCard.reorderingTimer);
 	}
 
-	// Встановлюємо новий таймер на 30 секунд
+	// Встановлюємо новий таймер на 15 секунд
 	goalCard.reorderingTimer = setTimeout(() => {
 		reorderSubgoals(goalCard);
-	}, 30000); // 30 секунд
+	}, 15000); // 15 секунд
 }
 
 // Функція для переупорядкування підцілей (невиконані нагору, виконані вниз)
@@ -631,154 +659,7 @@ function initSubgoalHandlersForGoal(goalCard) {
 	const subgoalCheckboxes = goalCard.querySelectorAll('.subgoal-checkbox');
 
 	subgoalCheckboxes.forEach(checkbox => {
-		// Якщо обробник вже додано, пропускаємо
-		if (checkbox.hasAttribute('data-handler-attached')) {
-			return;
-		}
-
-		// Позначаємо, що обробник додано
-		checkbox.setAttribute('data-handler-attached', 'true');
-		console.log('Додаємо обробник для підцілі:', checkbox.dataset.subgoalId);
-
-		// Ініціалізуємо стан
-		const completedValue = checkbox.dataset.completed ? checkbox.dataset.completed.trim() : 'false';
-		const isCompleted = completedValue === 'true';
-		const subgoalElement = checkbox.parentElement;
-		const nameElement = subgoalElement.querySelector('.subgoal-name');
-		const iconElement = checkbox.querySelector('i');
-
-		console.log(`Ініціалізація підцілі ${checkbox.dataset.subgoalId} у цілі: completed="${completedValue}", isCompleted=${isCompleted}`);
-
-		if (isCompleted) {
-			iconElement.className = 'fa-solid fa-square-check';
-			nameElement.classList.add('completed');
-		} else {
-			iconElement.className = 'fa-regular fa-square';
-			nameElement.classList.remove('completed');
-		}
-
-		// Додаємо обробник кліку (копіюємо логіку з основної функції)
-		checkbox.addEventListener('click', async function (event) {
-			console.log('Клік по підцілі:', this.dataset.subgoalId);
-
-			// Запобігаємо множинним клікам
-			if (this.hasAttribute('data-processing')) {
-				console.log('Запит вже обробляється, ігноруємо клік');
-				return;
-			}
-			this.setAttribute('data-processing', 'true');
-			console.log('Починаємо обробку кліку');
-
-			const subgoalId = this.dataset.subgoalId;
-			const currentCompleted = (this.dataset.completed ? this.dataset.completed.trim() : 'false') === 'true';
-			const subgoalElement = this.parentElement;
-			const nameElement = subgoalElement.querySelector('.subgoal-name');
-			const iconElement = this.querySelector('i');
-
-			// Оптимістичний UI - одразу змінюємо зовнішній вигляд
-			if (currentCompleted) {
-				// Змінюємо на невиконану
-				iconElement.className = 'fa-regular fa-square';
-				nameElement.classList.remove('completed');
-				this.dataset.completed = 'false';
-				this.classList.add('just-unchecked');
-				// Видаляємо клас анімації через деякий час
-				setTimeout(() => {
-					this.classList.remove('just-unchecked');
-				}, 200);
-			} else {
-				// Змінюємо на виконану
-				iconElement.className = 'fa-solid fa-square-check';
-				nameElement.classList.add('completed');
-				this.dataset.completed = 'true';
-				this.classList.add('just-checked');
-				// Видаляємо клас анімації через деякий час
-				setTimeout(() => {
-					this.classList.remove('just-checked');
-				}, 300);
-			}
-
-			// Відправляємо запит на сервер
-			try {
-				const response = await fetch('/api/toggle-subgoal/', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'X-CSRFToken': getCSRFToken(),
-					},
-					body: JSON.stringify({ subgoal_id: subgoalId })
-				});
-
-				const data = await response.json();
-
-				if (!response.ok) {
-					throw new Error(data.message || 'An error occurred while updating subgoal');
-				}
-
-				// Оновлюємо dataset з актуальним станом
-				this.dataset.completed = data.completed.toString();
-
-				// Оновлюємо прогрес цілі
-				updateGoalProgress(subgoalElement);
-
-				// Плануємо переупорядкування підцілей через 30 секунд
-				const goalCard = subgoalElement.closest('.goal-card');
-				if (goalCard) {
-					scheduleSubgoalReordering(goalCard);
-				}
-
-				// Якщо ціль була повністю завершена, можна оновити її відображення
-				if (data.goal_completed !== undefined) {
-					// Знайдемо блок цілі та оновимо його статус
-					const goalCard = subgoalElement.closest('.goal-card');
-					if (goalCard) {
-						const goalStatus = goalCard.querySelector('.goal-status');
-						if (goalStatus) {
-							if (data.goal_completed) {
-								goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Завершена';
-								goalStatus.classList.add('completed');
-								goalCard.classList.add('completed');
-								goalCard.classList.add('just-completed');
-
-								// Видаляємо клас анімації через деякий час
-								setTimeout(() => {
-									goalCard.classList.remove('just-completed');
-								}, 1000);
-
-								// Показуємо спеціальне сповіщення про завершення цілі
-								showNotification('Congratulations! Goal completed! 🎉', 'success');
-							} else {
-								goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> In process';
-								goalStatus.classList.remove('completed');
-								goalCard.classList.remove('completed');
-							}
-						}
-					}
-				} else {
-					// Звичайне сповіщення про оновлення підцілі (показуємо тільки якщо ціль не завершена)
-					showNotification('Статус підцілі оновлено', 'success');
-				}
-			} catch (error) {
-				console.error('Помилка при оновленні підцілі:', error);
-
-				// Повертаємо UI у вихідний стан у випадку помилки
-				if (currentCompleted) {
-					iconElement.className = 'fa-solid fa-square-check';
-					nameElement.classList.add('completed');
-					this.dataset.completed = 'true';
-				} else {
-					iconElement.className = 'fa-regular fa-square';
-					nameElement.classList.remove('completed');
-					this.dataset.completed = 'false';
-				}
-
-				// Показуємо сповіщення про помилку
-				showNotification('Помилка при оновленні підцілі: ' + error.message, 'error');
-			} finally {
-				// Прибираємо прапор обробки
-				this.removeAttribute('data-processing');
-			}
-		});
+		addSubgoalClickHandler(checkbox);
 	});
 }
 

@@ -40,21 +40,8 @@ function initializeModalHandlers() {
 					if (data.status === 'approved') {
 						clearInterval(interval);
 						twoFAModal.style.display = 'none';
-						// Авторизуємо користувача
-						fetch('/api/complete_2fa_login/', {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/json',
-								'X-CSRFToken': getCSRFToken()
-							},
-							body: JSON.stringify({ username: username })
-						})
-							.then(response => response.json())
-							.then(data => {
-								if (data.status === 'success') {
-									window.location.reload();
-								}
-							});
+						// Просто перенаправляємо на головну сторінку
+						window.location.href = '/';
 					}
 				});
 		}, 3000);

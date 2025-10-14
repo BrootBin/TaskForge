@@ -130,7 +130,7 @@ function initGlobalUtils() {
  */
 function startPollingForAuth(username) {
 	const intervalId = setInterval(() => {
-		fetch(`/check_2fa_status/?username=${encodeURIComponent(username)}`)
+		fetch(`/api/check_2fa_status/?username=${encodeURIComponent(username)}`)
 			.then(response => response.json())
 			.then(data => {
 				if (data.authenticated) {

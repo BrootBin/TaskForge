@@ -20,6 +20,8 @@ urlpatterns = [
 	path('api/tg_2fa_toggle/', views.tg_2fa_toggle, name='tg_2fa_toggle'),
    path('api/telegram_2fa/', views.telegram_2fa_confirm, name='telegram_2fa_confirm'),
 	path("api/telegram_2fa_status/", views.telegram_2fa_status, name="telegram_2fa_status"),
+	path("api/check_2fa_status/", views.telegram_2fa_status, name="check_2fa_status"),
+	path("api/complete_2fa_login/", views.complete_2fa_login, name="complete_2fa_login"),
 
 	# API для шаблонів цілей та звичок
    path('api/use-habit-template/', views.use_habit_template, name='use_habit_template'),
