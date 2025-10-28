@@ -14,4 +14,8 @@ app.conf.beat_schedule = {
         'task': 'main.tasks.generate_habit_notifications',
         'schedule': 1800.0,
     },
+    'reset-weekly-activity': {
+        'task': 'main.tasks.reset_weekly_activity',
+        'schedule': crontab(hour=0, minute=0, day_of_week=1),  # Кожен понеділок в 00:00
+    },
 }

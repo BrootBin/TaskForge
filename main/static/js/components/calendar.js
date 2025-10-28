@@ -59,18 +59,19 @@ function initializeCalendar() {
 		dayElement.className = 'day';
 		dayElement.textContent = i;
 
-		// Виділяємо поточний день
+		// Виділяємо сьогоднішній день
 		if (i === currentDay) {
-			dayElement.classList.add('active');
+			dayElement.classList.add('today');  // Добавляємо клас для сьогоднішнього дня
+			dayElement.classList.add('active'); // Також добавляємо активний клас (жовтий круг)
 		}
 
-		// Додаємо обробник кліку для вибору дня
+		// Додаємо обробник кліку для вибору дня (переміщення жовтого круга)
 		dayElement.addEventListener('click', function () {
-			// Знімаємо виділення з усіх днів
+			// Знімаємо активне виділення (жовтий круг) з усіх днів
 			document.querySelectorAll('.day').forEach(day => {
 				day.classList.remove('active');
 			});
-			// Виділяємо вибраний день
+			// Виділяємо вибраний день (жовтий круг)
 			this.classList.add('active');
 		});
 

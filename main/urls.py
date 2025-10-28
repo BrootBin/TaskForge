@@ -4,6 +4,8 @@ from . import views
 urlpatterns = [
 	# Основні сторінки
    path('', views.home, name='home'),
+   path('goals/', views.goals_page, name='goals'),
+   path('habits/', views.habits_page, name='habits'),
 	path("register/", views.register_view, name="register"),
    path("login/", views.login_view, name="login"),
    path("logout/", views.logout_view, name="logout"),
@@ -20,6 +22,8 @@ urlpatterns = [
 	path('api/tg_2fa_toggle/', views.tg_2fa_toggle, name='tg_2fa_toggle'),
 	path("api/telegram_2fa_status/", views.telegram_2fa_status, name="telegram_2fa_status"),
 	path("api/check_2fa_status/", views.telegram_2fa_status, name="check_2fa_status"),
+	path("api/decline_2fa/", views.decline_2fa, name="decline_2fa"),
+	path("api/test_telegram_update/", views.test_telegram_update, name="test_telegram_update"),
 
 	# API для шаблонів цілей та звичок
    path('api/use-habit-template/', views.use_habit_template, name='use_habit_template'),
@@ -38,4 +42,11 @@ urlpatterns = [
    # API для керування цілями та звичками
    path('api/toggle-subgoal/', views.toggle_subgoal, name='toggle_subgoal'),
    path('api/goal-progress/<int:goal_id>/', views.goal_progress, name='goal_progress'),
+   path('api/delete-goal/', views.delete_goal, name='delete_goal'),
+   path('api/delete-habit/', views.delete_habit, name='delete_habit'),
+   path('api/toggle-habit-active/', views.toggle_habit_active, name='toggle_habit_active'),
+   path('api/habit-checkin/', views.habit_checkin, name='habit_checkin'),
+	
+   # API для отримання даних активності користувача
+   path('api/activity-chart/', views.get_activity_chart_data, name='get_activity_chart_data'),
 ]

@@ -60,10 +60,56 @@
 	background: #333333;
 }
 
+.day.today {
+	background: rgba(128, 128, 128, 0.3);
+	/* Сірий фон для сьогоднішнього дня */
+	color: var(--text-secondary);
+	position: relative;
+}
+
+.day.today::before {
+	content: '';
+	position: absolute;
+	bottom: -2px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 4px;
+	height: 4px;
+	background: #666666;
+	/* Сіра точка під датою */
+	border-radius: 50%;
+}
+
 .day.active {
 	background: rgba(212, 175, 55, 0.3);
+	/* Жовтий фон для активного дня */
 	color: var(--primary);
 	font-weight: bold;
+	position: relative;
+}
+
+.day.active::after {
+	content: '';
+	position: absolute;
+	bottom: -2px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 4px;
+	height: 4px;
+	background: var(--primary);
+	/* Жовта точка під активною датою */
+	border-radius: 50%;
+}
+
+/* Якщо день одночасно сьогоднішній і активний, показуємо обидва індикатори */
+.day.today.active::before {
+	left: 40%;
+	/* Зсув сірого індикатора вліво */
+}
+
+.day.today.active::after {
+	left: 60%;
+	/* Зсув жовтої точки вправо */
 }
 
 /* === Календар у статистиці === */

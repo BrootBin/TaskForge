@@ -1,3 +1,5 @@
 venv
 .env
-**/node_modules/
+**/node_modules/**
+celerybeat-schedule
+__pycache__/

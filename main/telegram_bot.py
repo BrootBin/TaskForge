@@ -149,24 +149,64 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )()
         
         if not pending:
-            logging.error(f" Active 2FA request for user {username} not found")
-            await query.edit_message_text("⏱️ Active 2FA request not found.")
+            logging.error(f"Active 2FA request for user {username} not found")
+            await query.edit_message_text(
+                "⏱️ <b>Request Expired</b>\n\n"
+                "This 2FA request is no longer active or has already been processed.\n\n"
+                "🔒 If you didn't initiate this request, please secure your account.",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Проверяем, не истёк ли запрос (например, старше 10 минут)
+        from django.utils import timezone
+        import datetime
+        
+        time_limit = timezone.now() - datetime.timedelta(minutes=10)
+        if pending.created_at < time_limit:
+            logging.warning(f"2FA request expired for user {username}")
+            await sync_to_async(pending.delete)()
+            await query.edit_message_text(
+                "⏱️ <b>Request Expired</b>\n\n"
+                "This 2FA request has timed out.\n\n"
+                "🔒 If you didn't initiate this request, please secure your account.",
+                parse_mode='HTML'
+            )
             return
         
         # Handle approve/decline actions
         if action == "approve":
             pending.confirmed = True
             await sync_to_async(pending.save)()
-            await query.edit_message_text("✅ Login approved! You can continue on the website.")
+            await query.edit_message_text(
+                "✅ <b>Login Approved</b>\n\n"
+                f"User: <code>{username}</code>\n"
+                "You can continue on the website.",
+                parse_mode='HTML'
+            )
             logging.info(f"2FA confirmed for user: {username}")
-        else:
-            await sync_to_async(pending.delete)()
-            await query.edit_message_text("🚫 Login request declined.")
+        else:  # decline
+            logging.info(f"🚫 Setting declined=True for user: {username}, pending ID: {pending.id}")
+            pending.declined = True
+            await sync_to_async(pending.save)()
+            logging.info(f"🚫 Saved declined status for pending ID: {pending.id}")
+            await query.edit_message_text(
+                "🚫 <b>Login Request Declined</b>\n\n"
+                f"User: <code>{username}</code>\n"
+                "Login request has been cancelled.\n\n"
+                "🔒 If this wasn't you, your account is secure.",
+                parse_mode='HTML'
+            )
             logging.info(f"2FA declined for user: {username}")
     
     except Exception as e:
         logging.error(f"Error processing callback: {str(e)}")
-        await query.edit_message_text("❌ An error occurred while processing the request.")
+        await query.edit_message_text(
+            "❌ <b>Error</b>\n\n"
+            "An error occurred while processing your request.\n"
+            "Please try again or contact support.",
+            parse_mode='HTML'
+        )
 
 # --- Test command ---
 async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):

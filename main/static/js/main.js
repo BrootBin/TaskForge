@@ -8,13 +8,22 @@
 
 // Завантаження компонентів та утиліт
 // Функції залежать від порядку завантаження, не змінюйте його без необхідності
+
+// Базовые модальные компоненты (сначала базовый, потом специфичные)
+document.write('<script src="/static/js/components/modals/base-modal.js"></script>');
+document.write('<script src="/static/js/components/modals/auth-modal.js"></script>');
+document.write('<script src="/static/js/components/modals/2fa-modal.js"></script>');
+document.write('<script src="/static/js/components/modals/create-modal.js"></script>');
+
+// Остальные компоненты
 document.write('<script src="/static/js/utils/templates.js"></script>');
 document.write('<script src="/static/js/components/calendar.js"></script>');
-document.write('<script src="/static/js/components/modal.js"></script>');
 document.write('<script src="/static/js/components/stats-dashboard.js"></script>');
 document.write('<script src="/static/js/components/progress-text.js"></script>');
 document.write('<script src="/static/js/components/notification.js"></script>');
 document.write('<script src="/static/js/components/subgoal.js"></script>');
+document.write('<script src="/static/js/debug.js"></script>');
+
 
 // Ініціалізація скриптів при завантаженні DOM
 document.addEventListener('DOMContentLoaded', function () {
@@ -23,10 +32,18 @@ document.addEventListener('DOMContentLoaded', function () {
 	// Ініціалізація глобальних утиліт
 	initGlobalUtils();
 
-	// Ініціалізація компонентів
+	// Ініціалізація базовых модальных обработчиков
+	if (typeof initBaseModalHandlers === 'function') initBaseModalHandlers();
+
+	// Ініціалізація модальных компонентов
+	if (typeof initAuthModals === 'function') initAuthModals();
+
+	// Ініціалізація Telegram настроек
+	if (typeof initTelegramSettings === 'function') initTelegramSettings();
+
+	// Ініціалізація остальных компонентов
 	if (typeof initTemplates === 'function') initTemplates();
 	if (typeof initCalendar === 'function') initCalendar();
-	if (typeof initModals === 'function') initModals();
 	if (typeof initStatsDashboard === 'function') initStatsDashboard();
 	if (typeof initProgressText === 'function') initProgressText();
 
@@ -37,9 +54,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	// Перевірка та ініціалізація 2FA модального вікна, якщо необхідно
 	if (window.show2faUser) {
-		console.log('Showing 2FA modal for user:', window.show2faUser);
-		document.getElementById('twofa-modal').style.display = 'flex';
-		startPollingForAuth(window.show2faUser);
+		console.log('🔄 2FA user detected:', window.show2faUser);
+		console.log('🔄 DOM ready, showing 2FA modal via modular component');
+
+		// Небольшая задержка для полной загрузки DOM и модулей
+		setTimeout(() => {
+			// Используем функции из модуля 2fa-modal.js
+			if (typeof show2FAModal === 'function') {
+				show2FAModal();
+			}
+			if (typeof startPollingForAuth === 'function') {
+				startPollingForAuth(window.show2faUser);
+			}
+		}, 100);
 	}
 });
 
@@ -71,8 +98,8 @@ function initGlobalUtils() {
 		return document.body.classList.contains('authenticated');
 	};
 
-	// Функція для відображення повідомлень
-	function showMessage(message, type = 'info') {
+	// Функція для відображення повідомлень (зробимо глобальною)
+	window.showMessage = function (message, type = 'info') {
 		// Використовуємо глобальний компонент сповіщень, якщо доступний
 		if (window.notifications && typeof window.notifications.show === 'function') {
 			window.notifications.show(message, type, 3000);
@@ -122,24 +149,4 @@ function initGlobalUtils() {
 			}, 5000);
 		}
 	};
-}
-
-/**
- * Опитування сервера для перевірки статусу 2FA автентифікації
- * @param {string} username - имя пользователя для проверки
- */
-function startPollingForAuth(username) {
-	const intervalId = setInterval(() => {
-		fetch(`/api/check_2fa_status/?username=${encodeURIComponent(username)}`)
-			.then(response => response.json())
-			.then(data => {
-				if (data.authenticated) {
-					clearInterval(intervalId);
-					window.location.href = '/'; // Перенаправление на главную страницу
-				}
-			})
-			.catch(error => {
-				console.error('Error checking 2FA status:', error);
-			});
-	}, 3000);
 }

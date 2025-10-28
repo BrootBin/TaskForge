@@ -52,6 +52,7 @@
 /* Додаємо ефекти при наведенні на картку цілі */
 .goal-card {
 	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	margin-left: 10px;
 }
 
 .goal-card:hover {

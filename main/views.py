@@ -3,11 +3,13 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
+from django.conf import settings
 from .models import Notification, TelegramProfile, Pending2FA, SubGoal, Goal
 from .tasks import send_2fa_request
+from .activity_tracker import track_user_activity, get_user_weekly_activity
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 import random
 import json
 import os
@@ -32,11 +34,16 @@ def home(request):
         # Отримуємо інформацію профілю Telegram
         profile = getattr(request.user, 'telegram_profile', None)
         if profile:
-            telegram_code = profile.bind_code
+            print(f"🔍 Profile debug: connected={profile.connected}, telegram_id={profile.telegram_id}, bind_code={profile.bind_code}")
+            # Если аккаунт подключен, не показываем bind_code
+            telegram_code = None if (profile.connected and profile.telegram_id) else profile.bind_code
             # Виправляємо: використовуємо правильне поле для сповіщень
             telegram_notify_enabled = profile.notifications_enabled if (profile.connected and profile.telegram_id) else False
             two_factor_enabled = profile.two_factor_enabled
             telegram_connected = profile.connected and profile.telegram_id is not None
+            print(f"🔍 Final values: telegram_code={telegram_code}, telegram_connected={telegram_connected}")
+        else:
+            print(f"⚠️ No Telegram profile found for user {request.user.username}")
         
         # Отримуємо цілі та звички користувача або шаблони, якщо їх немає
         from .models import Goal, SubGoal, Habit, GoalTemplate, HabitTemplate
@@ -63,7 +70,80 @@ def home(request):
         'user_goals': user_goals,
         'template_goals': template_goals,
         'user_habits': user_habits,
-        'template_habits': template_habits
+        'template_habits': template_habits,
+    })
+
+
+@login_required
+def goals_page(request):
+    """Строрінка керування цілями користувача"""
+    from .models import Goal, SubGoal, GoalTemplate
+    
+    # Получаемо всі цілі користувача
+    user_goals = Goal.objects.filter(user=request.user).prefetch_related('subgoals').order_by('-created_at')
+
+    # Получаем шаблоны цілей для створення нових
+    goal_templates = GoalTemplate.objects.all()
+
+    # Статистика цілей
+    total_goals = user_goals.count()
+    completed_goals = user_goals.filter(completed=True).count()
+    active_goals = user_goals.filter(completed=False).count()
+    
+    # Прогресс всіх активних цілей
+    total_progress = 0
+    active_goals_with_subgoals = user_goals.filter(completed=False)
+    if active_goals_with_subgoals.exists():
+        for goal in active_goals_with_subgoals:
+            total_progress += goal.get_progress_percent()
+        average_progress = total_progress / active_goals_with_subgoals.count()
+    else:
+        average_progress = 0
+
+    return render(request, 'pages/goals.html', {
+        'user_goals': user_goals,
+        'goal_templates': goal_templates,
+        'total_goals': total_goals,
+        'completed_goals': completed_goals,
+        'active_goals': active_goals,
+        'average_progress': round(average_progress, 1),
+    })
+
+@login_required
+def habits_page(request):
+    """Сторінка управління привычками користувача"""
+    from .models import Habit, HabitTemplate
+    from django.utils import timezone
+    from datetime import datetime, timedelta
+    
+    # Получаемо всі привычки користувача
+    user_habits = Habit.objects.filter(user=request.user).order_by('-created_at')
+
+    # Получаем шаблоны привычек для створення нових
+    habit_templates = HabitTemplate.objects.all()
+
+    # Статистика привычек
+    total_habits = user_habits.count()
+    active_habits = user_habits.filter(active=True).count()
+    
+    # Привычки, отмеченные сегодня
+    today = timezone.now().date()
+    completed_today = 0
+    current_streak = 0
+    
+    for habit in user_habits.filter(active=True):
+        if habit.is_checked_today():
+            completed_today += 1
+        current_streak = max(current_streak, habit.current_streak)
+
+    return render(request, 'pages/habits.html', {
+        'user_habits': user_habits,
+        'habit_templates': habit_templates,
+        'total_habits': total_habits,
+        'active_habits': active_habits,
+        'completed_today': completed_today,
+        'current_streak': current_streak,
+        'today': today,
     })
 
 def register_view(request):
@@ -72,19 +152,30 @@ def register_view(request):
         password = request.POST.get("password")
         confirm = request.POST.get("confirm")
 
+        # Проверяем, если это AJAX запрос
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
+
         if password != confirm:
             messages.error(request, "The passwords do not match")
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Passwords do not match"})
             return redirect("home")
 
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Username already taken"})
             return redirect("home")
 
-
-    user = User.objects.create_user(username=username, password=password)
-    bind_code = f"{random.randint(100000, 999999)}"
-    TelegramProfile.objects.create(user=user, bind_code=bind_code)
-    login(request, user)
+        user = User.objects.create_user(username=username, password=password)
+        bind_code = f"{random.randint(100000, 999999)}"
+        TelegramProfile.objects.create(user=user, bind_code=bind_code)
+        login(request, user)
+        
+        if is_ajax:
+            return JsonResponse({"success": True, "message": "Registration successful!"})
+        return redirect("home")
+    
     return redirect("home")
 
 @csrf_exempt
@@ -94,8 +185,13 @@ def login_view(request):
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
 
+        # Проверяем, если это AJAX запрос
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
+
         if user is None:
             messages.error(request, "Incorrect username or password.")
+            if is_ajax:
+                return JsonResponse({"success": False, "error": "Incorrect username or password"})
             return render(request, "base.html", {
                 'telegram_code': None,
                 'telegram_notify_enabled': False,
@@ -121,8 +217,12 @@ def login_view(request):
                 return redirect("home")
 
             # Якщо підтвердженого немає, створюємо новий запит (якщо його ще немає)
-            if not Pending2FA.objects.filter(user=user, confirmed=False).exists():
+            if not Pending2FA.objects.filter(user=user, confirmed=False, declined=False).exists():
                 print(f"📤 Creating new 2FA request and sending message...")
+                # Очищаем старые записи перед созданием новой
+                Pending2FA.objects.filter(user=user).delete()
+                print(f"🧹 Cleared old 2FA records for user: {user.username}")
+                
                 Pending2FA.objects.create(user=user, telegram_id=profile.telegram_id)
                 print(f"🎯 Calling send_2fa_request.delay({profile.telegram_id}, {user.username})")
                 
@@ -151,7 +251,11 @@ def login_view(request):
 
         # Якщо 2FA не увімкнена → звичайний логін
         login(request, user)
+        track_user_activity(user, "login")  # Трекаем активность входа
         messages.success(request, "Login successful!")
+        
+        if is_ajax:
+            return JsonResponse({"success": True, "message": "Login successful!"})
         return redirect("home")
 
     return render(request, "base.html", {
@@ -164,37 +268,208 @@ def login_view(request):
 
 def telegram_2fa_status(request):
     username = request.GET.get("username")
+    print(f"🔍 2FA status check for username: {username}")
+    
     if not username:
         return JsonResponse({"authenticated": False, "confirmed": False, "status": "error"})
 
     try:
         user = User.objects.get(username=username)
-        pending = Pending2FA.objects.filter(user=user, confirmed=True).first()
-        is_confirmed = bool(pending)
         
-        # Якщо підтверджено, авторизуємо користувача та видаляємо запис
-        if is_confirmed and pending:
+        # Покажем ВСЕ записи для этого пользователя
+        all_pending = Pending2FA.objects.filter(user=user)
+        print(f"🔍 All Pending2FA records for {username}:")
+        for p in all_pending:
+            print(f"  - ID: {p.id}, confirmed: {p.confirmed}, declined: {p.declined}, created: {p.created_at}")
+        
+        # Перевіряємо підтверджені запити
+        pending_confirmed = Pending2FA.objects.filter(user=user, confirmed=True).first()
+        
+        # Перевіряємо відхилені запити
+        pending_declined = Pending2FA.objects.filter(user=user, declined=True).first()
+        
+        is_confirmed = bool(pending_confirmed)
+        is_declined = bool(pending_declined)
+        
+        print(f"🔍 Confirmed: {is_confirmed}, Declined: {is_declined}")
+
+        # Якщо підтверджено, авторизуємо користувача і видаляємо запис
+        if is_confirmed and pending_confirmed:
             login(request, user)
             request.session.save()
-            pending.delete()
+            pending_confirmed.delete()
             print(f"User {username} automatically logged in via 2FA status check")
+            
+            return JsonResponse({
+                "authenticated": True, 
+                "confirmed": True,
+                "status": "approved"
+            })
         
+        # Якщо відхилено, повертаємо статус відхилення без видалення
+        if is_declined and pending_declined:
+            print(f"🚫 2FA request was declined for user: {username}")
+            # Не удаляем запись немедленно, дадим фронтенду время на обработку
+            return JsonResponse({
+                "authenticated": False, 
+                "confirmed": False,
+                "status": "declined"
+            })
+        
+        # Запит в очікуванні
+        print(f"🔍 2FA request still pending for user: {username}")
         return JsonResponse({
-            "authenticated": is_confirmed, 
-            "confirmed": is_confirmed,
-            "status": "approved" if is_confirmed else "pending"
+            "authenticated": False, 
+            "confirmed": False,
+            "status": "pending"
         })
+        
     except User.DoesNotExist:
+        print(f"🔍 User not found: {username}")
         return JsonResponse({
             "authenticated": False, 
             "confirmed": False,
             "status": "error"
         })
 
+
+@csrf_exempt
+def decline_2fa(request):
+    """API для відхилення 2FA запиту"""
+    print(f"🚫 decline_2fa called with method: {request.method}")
+    
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "Only POST method allowed"}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        print(f"🚫 Decline request for username: {username}")
+        
+        if not username:
+            return JsonResponse({"status": "error", "message": "Username is required"}, status=400)
+        
+        user = User.objects.get(username=username)
+        print(f"🚫 User found: {user}")
+
+        # Знайти активний запит 2FA і відзначити як відхилений
+        pending_request = Pending2FA.objects.filter(
+            user=user, 
+            confirmed=False, 
+            declined=False
+        ).first()
+        
+        print(f"🚫 Active pending request found: {pending_request}")
+        
+        if pending_request:
+            # Сохраняем данные для обновления Telegram сообщения
+            telegram_id = pending_request.telegram_id
+            message_id = pending_request.telegram_message_id
+            
+            pending_request.declined = True
+            pending_request.save()
+            print(f"🚫 Request marked as declined for user: {username}")
+            
+            # Обновляем сообщение в Telegram, убирая кнопки и показывая истечение
+            from .tasks import update_2fa_message, cleanup_declined_2fa
+            try:
+                # Обновляем сообщение в Telegram
+                update_2fa_message.delay(telegram_id, username, message_id)
+                print(f"🚫 Telegram message update task sent")
+                
+                # Запланировать очистку declined записи через 30 секунд
+                cleanup_declined_2fa.apply_async(
+                    args=[pending_request.id], 
+                    countdown=30
+                )
+                print(f"🚫 Cleanup task scheduled for 30 seconds")
+            except Exception as e:
+                print(f"Failed to update Telegram message: {e}")
+            
+            return JsonResponse({
+                "status": "success", 
+                "message": "2FA request declined successfully"
+            })
+        else:
+            print(f"🚫 No active 2FA request found for user: {username}")
+            return JsonResponse({
+                "status": "error", 
+                "message": "No active 2FA request found"
+            }, status=404)
+            
+    except User.DoesNotExist:
+        print(f"🚫 User not found: {username}")
+        return JsonResponse({
+            "status": "error", 
+            "message": "User not found"
+        }, status=404)
+    except Exception as e:
+        print(f"🚫 Error in decline_2fa: {str(e)}")
+        return JsonResponse({
+            "status": "error", 
+            "message": str(e)
+        }, status=500)
+
+
 @login_required
 def logout_view(request):
     logout(request)
     return redirect("home")
+
+
+@csrf_exempt  
+def test_telegram_update(request):
+    """API для тестирования обновления сообщений в Telegram"""
+    if not (request.user.is_superuser or settings.DEBUG):
+        return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "Only POST method allowed"}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        test_type = data.get('test_type', 'update_message')
+        
+        if test_type == 'update_message':
+            # Тестовое обновление сообщения
+            from .tasks import update_2fa_message
+            telegram_id = data.get('telegram_id', '123456789')  # тестовый ID
+            username = data.get('username', 'test_user')
+            message_id = data.get('message_id')
+            
+            result = update_2fa_message.delay(telegram_id, username, message_id)
+            
+            return JsonResponse({
+                "status": "success",
+                "message": "Telegram update task started",
+                "task_id": result.id
+            })
+            
+        elif test_type == 'expire_notification':
+            # Тестовое уведомление об истечении
+            from .tasks import send_2fa_decline_notification
+            telegram_id = data.get('telegram_id', '123456789')
+            username = data.get('username', 'test_user')
+            
+            result = send_2fa_decline_notification.delay(telegram_id, username)
+            
+            return JsonResponse({
+                "status": "success", 
+                "message": "Expire notification task started",
+                "task_id": result.id
+            })
+            
+        else:
+            return JsonResponse({
+                "status": "error",
+                "message": "Unknown test type"
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=500)
 
 
 @login_required
@@ -221,17 +496,6 @@ def latest_notifications(request):
     return JsonResponse({'notifications': data})
 
 @login_required
-def bind_telegram(request):
-    if request.method == "POST":
-        telegram_id = request.POST.get("telegram_id")
-        profile, created = TelegramProfile.objects.get_or_create(user=request.user)
-        profile.telegram_id = telegram_id
-        profile.connected = True
-        profile.save()
-        return JsonResponse({"status": "ok"})
-    return JsonResponse({"status": "error"}, status=400)
-
-
 @login_required
 def generate_telegram_code(request):
     profile, _ = TelegramProfile.objects.get_or_create(user=request.user)
@@ -288,7 +552,7 @@ def tg_notify_toggle(request):
         enabled = data.get("enabled", False)
         profile.notifications_enabled = enabled
         profile.save()
-        return JsonResponse({"status": "ok"})
+        return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"status": "error", "msg": str(e)}, status=400)
     
@@ -335,7 +599,7 @@ def tg_2fa_toggle(request):
         enabled = data.get("enabled", False)
         profile.two_factor_enabled = enabled
         profile.save()
-        return JsonResponse({"status": "ok"})
+        return JsonResponse({"status": "success"})
     except Exception as e:
         return JsonResponse({"status": "error", "msg": str(e)}, status=400)
 
@@ -638,6 +902,10 @@ def toggle_subgoal(request):
         subgoal.completed = not subgoal.completed
         subgoal.save()
         
+        # Трекаем активність користувача
+        if subgoal.completed:
+            track_user_activity(request.user, "subgoal_completed")
+        
         # Перевіряємо, чи всі підцілі завершені, і якщо так, то відмічаємо всю мету як завершену
         goal = subgoal.goal
         all_completed = all(sg.completed for sg in goal.subgoals.all())
@@ -645,6 +913,8 @@ def toggle_subgoal(request):
         if all_completed and not goal.completed:
             goal.completed = True
             goal.save()
+            # Додаткова активність за завершення цілі
+            track_user_activity(request.user, "goal_completed", amount=5)
         elif not all_completed and goal.completed:
             goal.completed = False
             goal.save()
@@ -681,5 +951,208 @@ def goal_progress(request, goal_id):
             "goal_completed": goal.completed
         })
         
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@login_required
+def get_activity_chart_data(request):
+    """API для отримання даних активності користувача для чарта"""
+    try:
+        activity_data = get_user_weekly_activity(request.user)
+        
+        return JsonResponse({
+            "status": "success",
+            "data": activity_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@login_required
+@require_POST
+def delete_goal(request):
+    """API для удаления цели"""
+    try:
+        data = json.loads(request.body)
+        goal_id = data.get('goal_id')
+        
+        if not goal_id:
+            return JsonResponse({"status": "error", "message": "Goal ID is required"}, status=400)
+        
+        # Получаем цель и проверяем права доступа
+        goal = get_object_or_404(Goal, pk=goal_id, user=request.user)
+        goal_name = goal.name
+        
+        # Удаляем цель (подцели удалятся автоматически через CASCADE)
+        goal.delete()
+        
+        return JsonResponse({
+            "status": "success", 
+            "message": f"Goal '{goal_name}' has been deleted successfully"
+        })
+        
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@require_POST
+def delete_habit(request):
+    """API для видалення звички"""
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    try:
+        import json
+        data = json.loads(request.body)
+        habit_id = data.get('habit_id')
+        
+        if not habit_id:
+            return JsonResponse({"status": "error", "message": "Habit ID is required"}, status=400)
+        
+        from .models import Habit
+        habit = Habit.objects.get(id=habit_id, user=request.user)
+        habit_name = habit.name
+        habit.delete()
+        
+        return JsonResponse({
+            "status": "success", 
+            "message": f"Habit '{habit_name}' has been deleted successfully"
+        })
+        
+    except Habit.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Habit not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@require_POST
+def toggle_habit_active(request):
+    """API для перемикання активності звички"""
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    try:
+        import json
+        data = json.loads(request.body)
+        habit_id = data.get('habit_id')
+        
+        if not habit_id:
+            return JsonResponse({"status": "error", "message": "Habit ID is required"}, status=400)
+        
+        from .models import Habit
+        habit = Habit.objects.get(id=habit_id, user=request.user)
+        habit.active = not habit.active
+        habit.save()
+        
+        status_text = "activated" if habit.active else "paused"
+        return JsonResponse({
+            "status": "success", 
+            "message": f"Habit '{habit.name}' has been {status_text}",
+            "active": habit.active
+        })
+        
+    except Habit.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Habit not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@require_POST
+def habit_checkin(request):
+    """API для чекіну звички"""
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    try:
+        import json
+        from datetime import date, timedelta
+        from .models import Habit, HabitCheckin
+        
+        data = json.loads(request.body)
+        habit_id = data.get('habit_id')
+        checkin_date = data.get('date')
+        
+        if not habit_id:
+            return JsonResponse({"status": "error", "message": "Habit ID is required"}, status=400)
+        
+        # Парсимо дату
+        if checkin_date:
+            from datetime import datetime
+            checkin_date = datetime.strptime(checkin_date, '%Y-%m-%d').date()
+        else:
+            checkin_date = date.today()
+        
+        habit = Habit.objects.get(id=habit_id, user=request.user)
+        
+        # Перевіряємо, чи існує чекін на цю дату
+        checkin, created = HabitCheckin.objects.get_or_create(
+            habit=habit,
+            date=checkin_date,
+            defaults={'completed': True}
+        )
+        
+        if not created:
+            # Якщо чекін вже існує, перемикаємо статус
+            checkin.completed = not checkin.completed
+            checkin.save()
+        
+        # Оновлюємо streak_days та last_checkin
+        if checkin.completed:
+            # Перевіряємо чи це послідовний день
+            if habit.last_checkin:
+                days_diff = (checkin_date - habit.last_checkin).days
+                if days_diff == 1:
+                    habit.streak_days += 1
+                elif days_diff > 1:
+                    habit.streak_days = 1
+            else:
+                habit.streak_days = 1
+            
+            habit.last_checkin = checkin_date
+        else:
+            # Якщо скасували чекін, перерахуємо streak
+            if habit.last_checkin == checkin_date:
+                # Знаходимо попередній completed чекін
+                prev_checkin = HabitCheckin.objects.filter(
+                    habit=habit,
+                    date__lt=checkin_date,
+                    completed=True
+                ).order_by('-date').first()
+                
+                if prev_checkin:
+                    habit.last_checkin = prev_checkin.date
+                    # Перерахуємо streak
+                    consecutive_days = 1
+                    check_date = prev_checkin.date - timedelta(days=1)
+                    while True:
+                        prev_day_checkin = HabitCheckin.objects.filter(
+                            habit=habit,
+                            date=check_date,
+                            completed=True
+                        ).first()
+                        
+                        if prev_day_checkin:
+                            consecutive_days += 1
+                            check_date -= timedelta(days=1)
+                        else:
+                            break
+                    
+                    habit.streak_days = consecutive_days
+                else:
+                    habit.last_checkin = None
+                    habit.streak_days = 0
+        
+        habit.save()
+        
+        message = f"Habit '{habit.name}' marked as {'completed' if checkin.completed else 'not completed'} for {checkin_date}"
+        
+        return JsonResponse({
+            "status": "success",
+            "message": message,
+            "completed": checkin.completed,
+            "streak_days": habit.streak_days
+        })
+        
+    except Habit.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Habit not found"}, status=404)
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)

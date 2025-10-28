@@ -24,12 +24,53 @@ function initProgressChart() {
 	// Check if the chart element exists
 	if (!chartElement) return;
 
+	// Загружаємо дані активності користувача
+	loadActivityData();
+}
+
+/**
+ * Загружає дані активності користувача з сервера
+ */
+function loadActivityData() {
+	// Перевіряємо, чи авторизований користувач
+	if (!document.body.classList.contains('authenticated')) {
+		// Показуємо приклад даних для неавторизованих користувачів
+		renderChart(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [2, 4, 1, 3, 5, 2, 4]);
+		return;
+	}
+
+	fetch('/api/activity-chart/')
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success') {
+				console.log('📊 Activity data loaded:', data.data);
+				renderChart(data.data.labels, data.data.weekly_data);
+			} else {
+				console.error('Error loading activity data:', data.message);
+				// Fallback к прикладним даним
+				renderChart(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [0, 0, 0, 0, 0, 0, 0]);
+			}
+		})
+		.catch(error => {
+			console.error('Error fetching activity data:', error);
+			// Fallback к прикладним даним
+			renderChart(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], [0, 0, 0, 0, 0, 0, 0]);
+		});
+}
+
+/**
+ * Малює графік з наданими мітками та даними
+ */
+function renderChart(labels, weeklyData) {
+	const chartElement = document.getElementById('progressChart');
+	if (!chartElement) return;
+
 	// Data for the chart
 	const data = {
-		labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+		labels: labels,
 		datasets: [{
-			label: 'Completed Tasks',
-			data: [5, 7, 4, 6, 8, 3, 5],
+			label: 'Activity Points',
+			data: weeklyData,
 			backgroundColor: 'rgba(212, 175, 55, 0.2)',
 			borderColor: '#d4af37',
 			borderWidth: 2,
@@ -88,7 +129,29 @@ function initProgressChart() {
 	};
 
 	// Create and render the chart
-	new Chart(chartElement, config);
+	window.activityChart = new Chart(chartElement.getContext('2d'), config);
+}
+
+/**
+ * Обновляет данные чарта активности
+ */
+function updateActivityChart() {
+	if (!window.activityChart || !document.body.classList.contains('authenticated')) {
+		return;
+	}
+
+	fetch('/api/activity-chart/')
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success') {
+				console.log('📊 Updating activity chart with new data');
+				window.activityChart.data.datasets[0].data = data.data.weekly_data;
+				window.activityChart.update();
+			}
+		})
+		.catch(error => {
+			console.error('Error updating activity chart:', error);
+		});
 }
 
 /**
@@ -123,8 +186,8 @@ function updateProgressCircles() {
 	const monthlyProgressText = document.querySelector('.monthly-progress-container .progress-text');
 
 	if (monthlyProgress && monthlyProgressText) {
-		const monthlyPercent = 65; 
-		const circumference = 2 * Math.PI * 40; 
+		const monthlyPercent = 65;
+		const circumference = 2 * Math.PI * 40;
 		monthlyProgress.style.strokeDasharray = circumference;
 		monthlyProgress.style.strokeDashoffset = circumference * (1 - monthlyPercent / 100);
 	}

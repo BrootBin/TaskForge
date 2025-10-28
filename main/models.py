@@ -31,6 +31,17 @@ class Habit(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def is_checked_today(self):
+        """Перевіряє, чи відмічена привычка сьогодні"""
+        from django.utils import timezone
+        today = timezone.now().date()
+        return self.checkins.filter(date=today, completed=True).exists()
+    
+    @property
+    def current_streak(self):
+        """Повертає поточну серію днів"""
+        return self.streak_days
 
 
 class HabitCheckin(models.Model):
@@ -124,6 +135,78 @@ class Notification(models.Model):
 class Pending2FA(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     telegram_id = models.CharField(max_length=50)
+    telegram_message_id = models.CharField(max_length=50, null=True, blank=True)  # ID сообщения в Telegram
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed = models.BooleanField(default=False)
+    declined = models.BooleanField(default=False)  # Поле для отклоненных запросов
+
+
+class UserActivity(models.Model):
+    """Модель для трекинга активності користувача по дням тижня"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='activity')
+    
+    # Активність по дням тижня (0 = Понеділок, 6 = Неділя)
+    monday = models.IntegerField(default=0)
+    tuesday = models.IntegerField(default=0)
+    wednesday = models.IntegerField(default=0)
+    thursday = models.IntegerField(default=0)
+    friday = models.IntegerField(default=0)
+    saturday = models.IntegerField(default=0)
+    sunday = models.IntegerField(default=0)
+
+    # Мета-інформація
+    week_start = models.DateField(default=timezone.now)  # Початок поточного тижня
+    total_activities = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Week {self.week_start} (Total: {self.total_activities})"
+    
+    def get_day_activity(self, day_name):
+        """Отримати активність за конкретний день"""
+        day_mapping = {
+            'monday': self.monday,
+            'tuesday': self.tuesday,
+            'wednesday': self.wednesday,
+            'thursday': self.thursday,
+            'friday': self.friday,
+            'saturday': self.saturday,
+            'sunday': self.sunday,
+        }
+        return day_mapping.get(day_name.lower(), 0)
+    
+    def add_activity(self, day_name, amount=1):
+        """Добавити активність за конкретний день"""
+        day_mapping = {
+            'monday': 'monday',
+            'tuesday': 'tuesday', 
+            'wednesday': 'wednesday',
+            'thursday': 'thursday',
+            'friday': 'friday',
+            'saturday': 'saturday',
+            'sunday': 'sunday',
+        }
+        
+        field_name = day_mapping.get(day_name.lower())
+        if field_name:
+            current_value = getattr(self, field_name)
+            setattr(self, field_name, current_value + amount)
+            self.total_activities += amount
+            self.save()
+    
+    def get_weekly_data(self):
+        """Отримати дані тижня в форматі для чарта"""
+        return [
+            self.monday, self.tuesday, self.wednesday,
+            self.thursday, self.friday, self.saturday, self.sunday
+        ]
+    
+    def reset_week(self):
+        """Скинути дані тижня"""
+        self.monday = self.tuesday = self.wednesday = 0
+        self.thursday = self.friday = self.saturday = self.sunday = 0
+        self.total_activities = 0
+        self.week_start = timezone.now().date()
+        self.save()
 

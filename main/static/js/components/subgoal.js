@@ -185,6 +185,11 @@ function addSubgoalClickHandler(checkbox) {
 				// Звичайне сповіщення про оновлення підцілі (показуємо тільки якщо ціль не завершена)
 				showNotification('Статус підцілі оновлено', 'success');
 			}
+
+			// Обновляем чарт активности если функция доступна
+			if (typeof updateActivityChart === 'function') {
+				updateActivityChart();
+			}
 		} catch (error) {
 			console.error('Помилка при оновленні підцілі:', error);
 
@@ -597,7 +602,7 @@ function initShowAllSubgoalsHandlers() {
 					}, 10);
 				} else {
 					// Згортаємо: прибираємо вибраний стан
-					this.textContent = 'Показати всі';
+					this.textContent = 'Show all';
 					goalCard.classList.remove('selected');
 
 					// Прибираємо обробник кліку по документу
@@ -624,7 +629,7 @@ function handleOutsideClick(event) {
 
 			if (subgoalsList && showAllButton) {
 				subgoalsList.classList.remove('expanded');
-				showAllButton.textContent = 'Показати всі';
+				showAllButton.textContent = 'Show all';
 				selectedGoalCard.classList.remove('selected');
 
 				// Прибираємо обробник
