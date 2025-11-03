@@ -112,6 +112,80 @@
 	/* Зсув жовтої точки вправо */
 }
 
+/* === Стилі для днів з виконаними звичками === */
+.day.habits-completed {
+	background: rgba(76, 175, 80, 0.3) !important;
+	color: #4CAF50 !important;
+	font-weight: bold;
+	position: relative;
+}
+
+.day.habits-completed::after {
+	content: '✓';
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	font-size: 8px;
+	background: #4CAF50;
+	color: white;
+	border-radius: 50%;
+	width: 12px;
+	height: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+}
+
+.day.habits-completed:hover {
+	background: rgba(76, 175, 80, 0.4) !important;
+	transform: scale(1.05);
+	transition: all 0.2s ease;
+}
+
+/* Стили для дней с частично выполненными привычками */
+.day.habits-partial {
+	background: rgba(255, 193, 7, 0.3) !important;
+	color: #FFC107 !important;
+	font-weight: bold;
+	position: relative;
+}
+
+.day.habits-partial::after {
+	content: '◐';
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	font-size: 8px;
+	background: #FFC107;
+	color: white;
+	border-radius: 50%;
+	width: 12px;
+	height: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	line-height: 1;
+}
+
+.day.habits-partial:hover {
+	background: rgba(255, 193, 7, 0.4) !important;
+	transform: scale(1.05);
+	transition: all 0.2s ease;
+}
+
+/* Комбинирование с активным днем */
+.day.active.habits-completed,
+.day.active.habits-partial {
+	border: 2px solid var(--primary);
+}
+
+.day.today.habits-completed,
+.day.today.habits-partial {
+	box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.5);
+}
+
+/* === Стилі для дня з виконаними звичками === */
 /* === Календар у статистиці === */
 .stats-dashboard .mini-calendar {
 	background: transparent;

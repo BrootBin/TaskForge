@@ -14,14 +14,18 @@ document.write('<script src="/static/js/components/modals/base-modal.js"></scrip
 document.write('<script src="/static/js/components/modals/auth-modal.js"></script>');
 document.write('<script src="/static/js/components/modals/2fa-modal.js"></script>');
 document.write('<script src="/static/js/components/modals/create-modal.js"></script>');
+document.write('<script src="/static/js/components/support-modal.js"></script>');
 
 // Остальные компоненты
 document.write('<script src="/static/js/utils/templates.js"></script>');
 document.write('<script src="/static/js/components/calendar.js"></script>');
+document.write('<script src="/static/js/components/calendar-habits.js"></script>');
 document.write('<script src="/static/js/components/stats-dashboard.js"></script>');
 document.write('<script src="/static/js/components/progress-text.js"></script>');
 document.write('<script src="/static/js/components/notification.js"></script>');
 document.write('<script src="/static/js/components/subgoal.js"></script>');
+document.write('<script src="/static/js/components/index-subgoals.js"></script>');
+document.write('<script src="/static/js/components/habit-checkbox.js"></script>');
 document.write('<script src="/static/js/debug.js"></script>');
 
 
@@ -37,6 +41,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	// Ініціалізація модальных компонентов
 	if (typeof initAuthModals === 'function') initAuthModals();
+	if (typeof initCreateModals === 'function') initCreateModals();
+	if (typeof initSupportModal === 'function') initSupportModal();
 
 	// Ініціалізація Telegram настроек
 	if (typeof initTelegramSettings === 'function') initTelegramSettings();
@@ -50,7 +56,12 @@ document.addEventListener('DOMContentLoaded', function () {
 	// Перевіряємо, що система сповіщень завантажена
 	console.log('window.notifications доступний:', !!window.notifications);
 
-	if (typeof initSubgoalHandlers === 'function') initSubgoalHandlers();
+	// Инициализация обработчиков подцелей зависит от страницы
+	// Для главной страницы уже инициализируется автоматически в index-subgoals.js
+	// Для страницы целей уже инициализируется автоматически в subgoal.js
+
+	// Ініціалізація обработчиков привычек на главной странице
+	if (typeof initHabitCheckboxHandlers === 'function') initHabitCheckboxHandlers();
 
 	// Перевірка та ініціалізація 2FA модального вікна, якщо необхідно
 	if (window.show2faUser) {
@@ -83,70 +94,50 @@ function initGlobalUtils() {
 		return '';
 	};
 
-	// Додаємо глобальну функцію для тестування сповіщень
-	window.testNotification = function (message = 'Тестове повідомлення', type = 'info') {
-		if (window.notifications && typeof window.notifications.show === 'function') {
-			window.notifications.show(message, type, 3000);
-			console.log('Сповіщення відправлено через window.notifications');
-		} else {
-			console.log('window.notifications недоступний');
+	// Ініціалізація глобальної функції для показу повідомлень
+	window.showMessage = function (message, type = 'info', duration = 5000) {
+		// Перевіряємо наявність контейнера
+		let messageContainer = document.getElementById('message-container');
+		if (!messageContainer) {
+			// Створюємо контейнер для повідомлень
+			messageContainer = document.createElement('div');
+			messageContainer.id = 'message-container';
+			messageContainer.style.position = 'fixed';
+			messageContainer.style.top = '20px';
+			messageContainer.style.right = '20px';
+			messageContainer.style.zIndex = '10000';
+			messageContainer.style.maxWidth = '400px';
+			document.body.appendChild(messageContainer);
 		}
-	};
 
-	// Перевірка авторизації користувача
-	window.isAuthenticated = function () {
-		return document.body.classList.contains('authenticated');
-	};
+		// Створюємо елемент повідомлення
+		const messageElement = document.createElement('div');
+		messageElement.className = `message ${type}`;
+		messageElement.textContent = message;
 
-	// Функція для відображення повідомлень (зробимо глобальною)
-	window.showMessage = function (message, type = 'info') {
-		// Використовуємо глобальний компонент сповіщень, якщо доступний
-		if (window.notifications && typeof window.notifications.show === 'function') {
-			window.notifications.show(message, type, 3000);
-		} else {
-			// Перевіряємо, чи існує контейнер для повідомлень
-			let messageContainer = document.getElementById('message-container');
+		// Стилізація повідомлення з використанням CSS-змінних
+		messageElement.style.backgroundColor = type === 'error' ? 'var(--danger)' :
+			type === 'success' ? 'var(--success)' :
+				'var(--primary)';
+		messageElement.style.color = 'var(--text-primary)';
+		messageElement.style.padding = '15px';
+		messageElement.style.borderRadius = 'var(--border-radius-md)';
+		messageElement.style.marginBottom = '10px';
+		messageElement.style.boxShadow = 'var(--shadow-modal)';
+		messageElement.style.transition = 'opacity 0.5s ease-in-out';
+		messageElement.style.maxWidth = '350px';
 
-			if (!messageContainer) {
-				// Створюємо контейнер, якщо його немає
-				messageContainer = document.createElement('div');
-				messageContainer.id = 'message-container';
-				messageContainer.style.position = 'fixed';
-				messageContainer.style.top = '20px';
-				messageContainer.style.right = '20px';
-				messageContainer.style.zIndex = '9999';
-				document.body.appendChild(messageContainer);
-			}
+		// Додаємо повідомлення в контейнер
+		messageContainer.appendChild(messageElement);
 
-			// Створюємо елемент повідомлення
-			const messageElement = document.createElement('div');
-			messageElement.className = `message ${type}`;
-			messageElement.textContent = message;
-
-			// Стилізація повідомлення з використанням CSS-змінних
-			messageElement.style.backgroundColor = type === 'error' ? 'var(--danger)' :
-				type === 'success' ? 'var(--success)' :
-					'var(--primary)';
-			messageElement.style.color = 'var(--text-primary)';
-			messageElement.style.padding = '15px';
-			messageElement.style.borderRadius = 'var(--border-radius-md)';
-			messageElement.style.marginBottom = '10px';
-			messageElement.style.boxShadow = 'var(--shadow-modal)';
-			messageElement.style.transition = 'opacity 0.5s ease-in-out';
-			messageElement.style.maxWidth = '350px';
-
-			// Додаємо повідомлення в контейнер
-			messageContainer.appendChild(messageElement);
-
-			// Видаляємо повідомлення через 5 секунд
+		// Видаляємо повідомлення через 5 секунд
+		setTimeout(() => {
+			messageElement.style.opacity = '0';
 			setTimeout(() => {
-				messageElement.style.opacity = '0';
-				setTimeout(() => {
-					if (messageElement.parentNode) {
-						messageElement.remove();
-					}
-				}, 500);
-			}, 5000);
-		}
+				if (messageElement.parentNode) {
+					messageElement.remove();
+				}
+			}, 500);
+		}, 5000);
 	};
 }

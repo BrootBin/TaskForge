@@ -18,4 +18,8 @@ app.conf.beat_schedule = {
         'task': 'main.tasks.reset_weekly_activity',
         'schedule': crontab(hour=0, minute=0, day_of_week=1),  # Кожен понеділок в 00:00
     },
+    'cleanup-expired-password-resets': {
+        'task': 'main.tasks.cleanup_expired_password_resets',
+        'schedule': crontab(minute=0),  # Кожну годину
+    },
 }

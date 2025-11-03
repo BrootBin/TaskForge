@@ -5,7 +5,8 @@
 
 {% block content %}
 <!-- Подключаем стили страницы целей -->
-<link rel="stylesheet" href="{% static 'css/pages/goals.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/goals.css' %}?v=8">
+<link rel="stylesheet" href="{% static 'css/components/subgoal.css' %}?v=2">
 
 <div class="goals-page">
     <!-- Заголовок сторінки -->
@@ -83,13 +84,14 @@
                             <!-- Підцілі -->
                             {% if goal.subgoals.all %}
                                 <div class="subgoals-section">
-                                    <h4>Subgoals ({{ goal.subgoals.filter.completed.count }}/{{ goal.subgoals.count }})</h4>
+                                    <h4>Subgoals ({{ goal.get_completed_subgoals_count }}/{{ goal.subgoals.count }})</h4>
                                     <div class="subgoals-list">
                                         {% for subgoal in goal.subgoals.all %}
                                             <div class="subgoal-item {% if subgoal.completed %}completed{% endif %}">
                                                 <input type="checkbox" 
                                                        class="subgoal-checkbox" 
                                                        data-subgoal-id="{{ subgoal.id }}"
+                                                       data-completed="{{ subgoal.completed|yesno:'true,false' }}"
                                                        {% if subgoal.completed %}checked{% endif %}>
                                                 <span class="subgoal-name">{{ subgoal.name }}</span>
                                             </div>
@@ -205,6 +207,9 @@
         </div>
     </div>
 </div>
+
+<!-- Підключаем JavaScript компонентів -->
+<script src="{% static 'js/components/subgoal.js' %}"></script>
 
 <!-- Підключаем JavaScript сторінки цілей -->
 <script src="{% static 'js/pages/goals.js' %}"></script>

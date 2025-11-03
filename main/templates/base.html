@@ -103,6 +103,11 @@
             <p>
               Don't have account? <a href="#" id="show-register">Sign up</a>
             </p>
+            <div class="auth-help-section">
+              <a href="#" id="auth-help-login" class="help-link">
+                <i class="fas fa-question-circle"></i> Need help with login?
+              </a>
+            </div>
           </form>
 
           <form id="register-form" method="post" action="{% url 'register' %}" style="display:none;">
@@ -115,6 +120,11 @@
             <p>
               Did you have account? <a href="#" id="show-login">Sign in</a>
             </p>
+            <div class="auth-help-section">
+              <a href="#" id="auth-help-register" class="help-link">
+                <i class="fas fa-question-circle"></i> Need help with registration?
+              </a>
+            </div>
           </form>
         {% endif %}
       </div>
@@ -171,6 +181,58 @@
         </div>
       </div>
 
+      <!-- Technical Support Modal -->
+      <div id="support-modal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content support-modal-large">
+          <div class="modal-header">
+            <h3>Technical Support</h3>
+            <button class="modal-close" id="close-support-modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="support-form">
+              <div class="form-group">
+                <label for="support-category">Problem Category*</label>
+                <select id="support-category" name="category" required>
+                  <option value="">Select category...</option>
+                  <option value="2fa_problem">Two-Factor Authentication Problem</option>
+                  <option value="login_problem">Can't Log In to Account</option>
+                  <option value="telegram_problem">Telegram Bot Problem</option>
+                  <option value="technical_issue">Technical Problem/Bug</option>
+                  <option value="feature_request">Feature Suggestion/Request</option>
+                </select>
+              </div>
+
+              <!-- Dynamic fields -->
+              <div id="dynamic-fields"></div>
+              
+              <div class="form-group">
+                <label for="support-message">Detailed Problem Description*</label>
+                <textarea 
+                  id="support-message" 
+                  name="message" 
+                  required 
+                  placeholder="Please describe your problem in detail. Include the steps that led to the error and what you expected to see."
+                  maxlength="2000"
+                  rows="4"
+                ></textarea>
+                <div class="char-counter">
+                  <span id="message-counter">0</span>/2000 characters
+                </div>
+              </div>
+              
+              <div class="form-note">
+                <p><strong>Note:</strong> We try to respond to all requests within 24 hours. For urgent account security questions, we will respond within 2-4 hours.</p>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-cancel" id="cancel-support">Cancel</button>
+            <button type="submit" class="btn-primary" id="submit-support" form="support-form">Send</button>
+          </div>
+        </div>
+      </div>
+
     <main class="main-content">
       {% block content %}
         <div id="root"></div>
@@ -184,8 +246,16 @@
     
       </div>
     </footer>
+
+    <!-- Плавающая кнопка поддержки -->
+    <button class="support-fab" id="support-fab" title="Technical Support - Always available!" aria-label="Open technical support">
+      <i class="fas fa-headset"></i>
+      <span class="support-badge" id="support-badge">Help</span>
+    </button>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/components/support-modal.js' %}"></script>
     {% block extra_js %}{% endblock %}
     <script>
         {% if show_2fa_modal and username %}

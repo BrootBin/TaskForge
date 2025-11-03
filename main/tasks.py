@@ -24,6 +24,18 @@ def reset_daily_activity():
     print(f"🎯 Weekly activity reset completed. Reset {reset_count} user activities.")
     return f"Reset {reset_count} activities"
 
+@shared_task
+def cleanup_expired_password_resets():
+    """Celery-задача для очистки старих запитів на скидання пароля"""
+    from .models import PendingPasswordReset
+    
+    print("🧹 Starting cleanup of expired password resets...")
+    
+    expired_count = PendingPasswordReset.cleanup_expired()
+    
+    print(f"🎯 Cleanup completed. Removed {expired_count} expired password reset requests.")
+    return f"Cleaned up {expired_count} expired resets"
+
 async def send_2fa_async(telegram_id, username):
     """Асинхронно надсилає повідомлення з кнопками 2FA."""
     bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)

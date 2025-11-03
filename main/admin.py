@@ -7,9 +7,11 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin
 from .models import (
     Habit, HabitTemplate, Goal, GoalTemplate, SubGoal,
-    Notification, TelegramProfile, SubGoalTemplate
+    Notification, TelegramProfile, SubGoalTemplate, TechAdmin, SupportMessage, PendingPasswordReset
 )
 
 # Форма для створення шаблону цілі з підцілями
@@ -153,12 +155,144 @@ class GoalTemplateAdmin(admin.ModelAdmin):
         # Використовувати напряму render замість render_change_form
         return render(request, 'admin/goaltemplate_form.html', context)
 
+# Кастомный админ для пользователей (для техадминов)
+class TechAdminUserAdmin(UserAdmin):
+    """Ограниченный доступ к пользователям для техадминов"""
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_active', 'date_joined')
+    list_filter = ('is_active', 'date_joined')
+    search_fields = ('username', 'email', 'first_name', 'last_name')
+    readonly_fields = ('date_joined', 'last_login')
+    
+    def has_add_permission(self, request):
+        # Техадмины не могут создавать пользователей
+        return request.user.is_superuser
+    
+    def has_delete_permission(self, request, obj=None):
+        # Техадмины не могут удалять пользователей
+        return request.user.is_superuser
+    
+    def has_change_permission(self, request, obj=None):
+        # Техадмины могут только просматривать
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
+    
+    def get_readonly_fields(self, request, obj=None):
+        if request.user.is_superuser:
+            return self.readonly_fields
+        # Для техадминов все поля только для чтения
+        return [f.name for f in self.model._meta.fields]
+
+# Админ для технических администраторов
+class TechAdminAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_active', 'created_at', 'created_by')
+    list_filter = ('is_active', 'created_at')
+    search_fields = ('user__username', 'user__email')
+    readonly_fields = ('created_at',)
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # Только при создании
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    def has_module_permission(self, request):
+        # Только суперпользователи могут управлять техадминами
+        return request.user.is_superuser
+
+# Админ для сообщений поддержки
+class SupportMessageAdmin(admin.ModelAdmin):
+    list_display = ('user', 'subject', 'status', 'priority', 'created_at', 'assigned_to')
+    list_filter = ('status', 'priority', 'problem_type', 'created_at')
+    search_fields = ('user__username', 'subject', 'message')
+    readonly_fields = ('created_at', 'updated_at', 'user_agent', 'ip_address')
+    list_editable = ('status', 'priority')
+    
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('user', 'subject', 'message', 'status', 'priority')
+        }),
+        ('Детали проблемы', {
+            'fields': ('problem_type', 'user_agent', 'ip_address')
+        }),
+        ('Обработка', {
+            'fields': ('assigned_to', 'admin_notes', 'resolved_at')
+        }),
+        ('Даты', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
+    
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
+    
+    def has_add_permission(self, request):
+        # Сообщения создаются только через интерфейс пользователя
+        return False
+
+# Ограниченный админ для TelegramProfile (для техадминов)
+class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'telegram_id', 'connected', 'notifications_enabled', 'two_factor_enabled')
+    list_filter = ('connected', 'notifications_enabled', 'two_factor_enabled')
+    search_fields = ('user__username', 'telegram_id')
+    
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+    
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+    
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
+
+# Переопределяем регистрацию пользователей только для техадминов
+# Снимаем стандартную регистрацию User
+admin.site.unregister(User)
+
+# Регистрируем с кастомным админом
+admin.site.register(User, TechAdminUserAdmin)
+
 # Реєструємо моделі з адміністративними класами
 admin.site.register(HabitTemplate, HabitTemplateAdmin)
 admin.site.register(GoalTemplate, GoalTemplateAdmin)
 admin.site.register(SubGoalTemplate, SubGoalTemplateAdmin)
 admin.site.register(Notification)
-admin.site.register(TelegramProfile)
 admin.site.register(Habit)
 admin.site.register(Goal)
+
+# Новые модели для техподдержки
+admin.site.register(TechAdmin, TechAdminAdmin)
+admin.site.register(SupportMessage, SupportMessageAdmin)
+
+# Password reset admin
+@admin.register(PendingPasswordReset)
+class PendingPasswordResetAdmin(admin.ModelAdmin):
+    list_display = ('user', 'telegram_id', 'is_confirmed', 'created_at', 'expires_at', 'is_expired_display')
+    list_filter = ('is_confirmed', 'created_at', 'expires_at')
+    search_fields = ('user__username', 'telegram_id')
+    readonly_fields = ('created_at', 'is_expired_display')
+    
+    def is_expired_display(self, obj):
+        return obj.is_expired()
+    is_expired_display.short_description = 'Истекший'
+    is_expired_display.boolean = True
+    
+    actions = ['cleanup_expired_resets']
+    
+    def cleanup_expired_resets(self, request, queryset):
+        count = PendingPasswordReset.cleanup_expired()
+        self.message_user(request, f'Удалено {count} истекших запросов на сброс пароля.')
+    cleanup_expired_resets.short_description = 'Очистить истекшие запросы'
+
+# Регистрируем TelegramProfile с ограниченными правами
+admin.site.register(TelegramProfile, TechAdminTelegramProfileAdmin)
 

@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.conf import settings
-from .models import Notification, TelegramProfile, Pending2FA, SubGoal, Goal
+from .models import Notification, TelegramProfile, Pending2FA, SubGoal, Goal, Habit
 from .tasks import send_2fa_request
 from .activity_tracker import track_user_activity, get_user_weekly_activity
 from django.contrib.auth.decorators import login_required
@@ -1156,3 +1156,267 @@ def habit_checkin(request):
         return JsonResponse({"status": "error", "message": "Habit not found"}, status=404)
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@csrf_exempt
+def daily_habits_status(request):
+    """API для перевірки статусу всіх звичок за сьогоднішній день"""
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    
+    try:
+        from datetime import date
+        from .models import Habit, HabitCheckin
+        
+        today = date.today()
+        
+        # Отримуємо всі активні звички користувача
+        user_habits = Habit.objects.filter(user=request.user, active=True)
+        total_habits = user_habits.count()
+        
+        if total_habits == 0:
+            return JsonResponse({
+                "status": "success",
+                "all_completed": False,
+                "total_habits": 0,
+                "completed_habits": 0,
+                "message": "Немає активних звичок"
+            })
+        
+        # Перевіряємо, скільки звичок виконано сьогодні
+        completed_habits = 0
+        for habit in user_habits:
+            if habit.is_checked_today():
+                completed_habits += 1
+        
+        all_completed = completed_habits == total_habits
+        
+        return JsonResponse({
+            "status": "success",
+            "all_completed": all_completed,
+            "total_habits": total_habits,
+            "completed_habits": completed_habits,
+            "completion_percentage": round((completed_habits / total_habits) * 100, 1) if total_habits > 0 else 0,
+            "date": today.isoformat(),
+            "message": f"Виконано {completed_habits} з {total_habits} звичок" + (" - всі завершені! 🎉" if all_completed else "")
+        })
+        
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+def send_support_message(request):
+    """API для отправки сообщения в техническую поддержку (работает для всех пользователей)"""
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "Only POST method allowed"}, status=405)
+    
+    try:
+        import json
+        from .models import SupportMessage
+        
+        # Получаем данные из запроса
+        data = json.loads(request.body)
+        category = data.get('category', '').strip()
+        message = data.get('message', '').strip()
+        
+        # Дополнительные поля в зависимости от категории
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip()
+        phone = data.get('phone', '').strip()
+        device_info = data.get('device_info', '').strip()
+        error_message = data.get('error_message', '').strip()
+        last_login = data.get('last_login', '').strip()
+        
+        # Basic validation
+        if not category:
+            return JsonResponse({"status": "error", "message": "Problem category is required"}, status=400)
+        
+        if not message:
+            return JsonResponse({"status": "error", "message": "Problem description is required"}, status=400)
+        
+        # Category-specific validation
+        if category == '2fa_problem':
+            if not username:
+                return JsonResponse({"status": "error", "message": "Username is required for 2FA problems"}, status=400)
+        
+        elif category == 'login_problem':
+            if not username and not email:
+                return JsonResponse({"status": "error", "message": "Username or email is required for login problems"}, status=400)
+        
+        elif category == 'telegram_problem':
+            if not username:
+                return JsonResponse({"status": "error", "message": "Username is required for Telegram problems"}, status=400)
+        
+        # For unauthenticated users, require some form of identification
+        # For 2FA and Telegram problems, username is sufficient
+        # For other problems, we need email for contact
+        if not request.user.is_authenticated:
+            if category in ['2fa_problem', 'telegram_problem']:
+                # Username is sufficient for these categories
+                if not username:
+                    return JsonResponse({"status": "error", "message": f"Username is required for {category.replace('_', ' ')} when not logged in"}, status=400)
+            else:
+                # For other categories, we need email to contact the user
+                if not email:
+                    return JsonResponse({"status": "error", "message": "Email is required for unauthenticated users for this type of problem"}, status=400)
+        
+        if len(message) > 2000:
+            return JsonResponse({"status": "error", "message": "Message too long (maximum 2000 characters)"}, status=400)
+        
+        # Получаем дополнительную информацию о запросе
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        ip_address = request.META.get('REMOTE_ADDR', '')
+        
+        # Если прокси, получаем реальный IP
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0].strip()
+        
+        # Формируем structured_data с дополнительными полями
+        structured_data = {
+            'category': category,
+            'username': username,
+            'email': email,
+            'phone': phone,
+            'device_info': device_info,
+            'error_message': error_message,
+            'last_login': last_login,
+        }
+        
+        # Определяем приоритет в зависимости от категории
+        priority_mapping = {
+            '2fa_problem': 'high',
+            'login_problem': 'medium',
+            'telegram_problem': 'low',
+            'technical_issue': 'low',
+            'feature_request': 'low'
+        }
+        
+        # Создаем сообщение в поддержку
+        support_message = SupportMessage.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            subject=f"{category}: {message[:50]}...",
+            message=message,
+            problem_type=category,
+            user_agent=user_agent,
+            ip_address=ip_address,
+            priority=priority_mapping.get(category, 'low'),
+            # Добавляем структурированные данные в admin_notes для просмотра
+            admin_notes=f"Structured data: {json.dumps(structured_data, ensure_ascii=False, indent=2)}"
+        )
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Your message has been sent to technical support. We will contact you shortly.",
+            "ticket_id": support_message.id
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid data format"}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error sending support message: {str(e)}")
+        return JsonResponse({"status": "error", "message": "An error occurred while sending the message"}, status=500)
+
+@login_required
+def habits_completion_history(request):
+    """
+    API для получения истории выполнения привычек по дням
+    """
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        print(f"[HABITS-API] Loading habits completion history for user: {request.user.username}")
+        
+        # Получаем привычки пользователя
+        user_habits = Habit.objects.filter(user=request.user, active=True)
+        print(f"[HABITS-API] Found {user_habits.count()} active habits")
+        
+        if not user_habits.exists():
+            print("[HABITS-API] No habits found, returning empty data")
+            return JsonResponse({
+                "status": "success",
+                "data": {}
+            })
+        
+        # Получаем данные за последние 30 дней
+        end_date = timezone.now().date()
+        start_date = end_date - timedelta(days=30)
+        
+        completion_data = {}
+        
+        # Проходим по каждому дню
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime('%Y-%m-%d')
+            
+            total_habits = user_habits.count()
+            completed_habits = 0
+            
+            # Для сегодняшнего дня используем актуальное состояние
+            if current_date == end_date:
+                for habit in user_habits:
+                    if habit.is_checked_today():  # Вызываем как метод
+                        completed_habits += 1
+            else:
+                # Для прошлых дней проверяем через checkins
+                for habit in user_habits:
+                    if habit.checkins.filter(date=current_date, completed=True).exists():
+                        completed_habits += 1
+            
+            all_completed = (completed_habits == total_habits and total_habits > 0)
+            
+            completion_data[date_str] = {
+                'all_completed': all_completed,
+                'completed_count': completed_habits,
+                'total_count': total_habits
+            }
+            
+            current_date += timedelta(days=1)
+        
+        print(f"[HABITS-API] Returning completion data for {len(completion_data)} days")
+        return JsonResponse({
+            "status": "success",
+            "data": completion_data
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting habits completion history: {str(e)}")
+        print(f"[HABITS-API] ERROR: {str(e)}")
+        import traceback
+        print(f"[HABITS-API] Traceback: {traceback.format_exc()}")
+        return JsonResponse({"status": "error", "message": "Failed to load habits history"}, status=500)
+
+@login_required
+@require_POST
+def save_habits_completion(request):
+    """
+    API для сохранения информации о выполнении всех привычек в конкретный день
+    """
+    try:
+        data = json.loads(request.body)
+        date_str = data.get('date')
+        all_completed = data.get('all_completed', False)
+        
+        if not date_str:
+            return JsonResponse({"status": "error", "message": "Date is required"}, status=400)
+        
+        # Можно сохранить эту информацию в базу данных для статистики
+        # Пока просто возвращаем успех
+        
+        return JsonResponse({
+            "status": "success",
+            "message": "Habits completion status saved"
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "message": "Invalid JSON data"}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error saving habits completion: {str(e)}")
+        return JsonResponse({"status": "error", "message": "Failed to save habits completion"}, status=500)

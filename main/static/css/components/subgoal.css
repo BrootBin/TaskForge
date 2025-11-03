@@ -91,13 +91,22 @@
 	}
 }
 
-/* Приховуємо підцілі після третьої за замовчуванням */
-.subgoals-list .subgoal-item:nth-child(n+4) {
+/* Показываем только первые 3 подцели по умолчанию */
+.subgoals-list .subgoal-item {
+	display: flex;
+}
+
+/* Скрываем подцели после 3-х элементов */
+.subgoals-list .subgoal-item.hidden-subgoal {
 	display: none;
 }
 
 /* Коли список розгорнутий, показуємо всі підцілі */
 .subgoals-list.expanded .subgoal-item {
+	display: flex;
+}
+
+.subgoals-list.expanded .subgoal-item.hidden-subgoal {
 	display: flex;
 }
 
@@ -147,6 +156,27 @@
 	background-color: var(--bg-card-hover);
 }
 
+/* Стили для раскрытой цели */
+.goal-card.goal-expanded {
+	position: relative;
+	z-index: 50;
+	box-shadow: 0 12px 32px rgba(212, 175, 55, 0.3);
+	border: 2px solid var(--primary);
+	background-color: var(--bg-card-hover);
+	transition: all 0.3s ease;
+}
+
+/* Затемнение других целей когда одна раскрыта */
+.goal-card.goal-expanded~.goal-card:not(.goal-expanded) {
+	opacity: 0.7;
+	transition: opacity 0.3s ease;
+}
+
+/* Возвращаем opacity при ховере */
+.goal-card:not(.goal-expanded):hover {
+	opacity: 1 !important;
+}
+
 /* Затемнюючий overlay */
 .goal-card.selected::after {
 	content: '';
@@ -192,8 +222,23 @@
 }
 
 .subgoal-name.completed {
-	text-decoration: line-through;
-	color: var(--text-tertiary);
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7;
+}
+
+.subgoal-item.completed .subgoal-name {
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7;
+}
+
+/* Специфично для span элементов на главной странице */
+span.subgoal-name.completed,
+.subgoal-item.completed span.subgoal-name {
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7 !important;
 }
 
 /* Анімація при відмітці підцілі */

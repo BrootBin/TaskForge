@@ -270,65 +270,60 @@ function checkEmptyState() {
 }
 
 /**
- * Ініціалізація перемикання підцілей
+ * Ініціалізація перемикання підцілей (ВІДКЛЮЧЕНО - використовується модуль subgoal.js)
  */
 function initSubgoalToggle() {
-	document.addEventListener('change', async (e) => {
-		if (e.target.classList.contains('subgoal-checkbox')) {
-			const subgoalId = e.target.dataset.subgoalId;
-			const completed = e.target.checked;
-
-			await toggleSubgoal(subgoalId, completed);
-		}
-	});
+	console.log('⚠️ initSubgoalToggle в goals.js відключено, використовується subgoal.js');
+	// document.addEventListener('change', async (e) => {
+	// 	if (e.target.classList.contains('subgoal-checkbox')) {
+	// 		const subgoalId = e.target.dataset.subgoalId;
+	// 		const completed = e.target.checked;
+	// 		await toggleSubgoal(subgoalId, completed);
+	// 	}
+	// });
 }
 
 /**
- * Переключення стану підцелі
+ * Переключення стану підцелі (ВІДКЛЮЧЕНО - використовується модуль subgoal.js)
  */
 async function toggleSubgoal(subgoalId, completed) {
-	try {
-		const response = await fetch('/api/toggle-subgoal/', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-CSRFToken': getCsrfToken(),
-			},
-			body: JSON.stringify({
-				subgoal_id: subgoalId,
-				completed: completed
-			})
-		});
-
-		const result = await response.json();
-
-		if (result.status === 'success') {
-			// Оновлюємо UI для підцелі
-			const subgoalItem = document.querySelector(`[data-subgoal-id="${subgoalId}"]`).closest('.subgoal-item');
-			if (completed) {
-				subgoalItem.classList.add('completed');
-			} else {
-				subgoalItem.classList.remove('completed');
-			}
-
-			// Обновляем прогресс цілі
-			const goalCard = subgoalItem.closest('.goal-card');
-			const goalId = goalCard.dataset.goalId;
-			if (goalId) {
-				await updateGoalProgress(goalId);
-			}
-		} else {
-			showNotification(result.message || 'Failed to update subgoal', 'error');
-			// Повертаємо чекбокс в початковий стан
-			const checkbox = document.querySelector(`[data-subgoal-id="${subgoalId}"]`);
-			if (checkbox) {
-				checkbox.checked = !completed;
-			}
-		}
-	} catch (error) {
-		console.error('Error toggling subgoal:', error);
-		showNotification('Failed to update subgoal', 'error');
-	}
+	console.log('⚠️ toggleSubgoal в goals.js відключено, використовується subgoal.js');
+	// try {
+	// 	const response = await fetch('/api/toggle-subgoal/', {
+	// 		method: 'POST',
+	// 		headers: {
+	// 			'Content-Type': 'application/json',
+	// 			'X-CSRFToken': getCsrfToken(),
+	// 		},
+	// 		body: JSON.stringify({
+	// 			subgoal_id: subgoalId,
+	// 			completed: completed
+	// 		})
+	// 	});
+	// 	const result = await response.json();
+	// 	if (result.status === 'success') {
+	// 		const subgoalItem = document.querySelector(`[data-subgoal-id="${subgoalId}"]`).closest('.subgoal-item');
+	// 		if (completed) {
+	// 			subgoalItem.classList.add('completed');
+	// 		} else {
+	// 			subgoalItem.classList.remove('completed');
+	// 		}
+	// 		const goalCard = subgoalItem.closest('.goal-card');
+	// 		const goalId = goalCard.dataset.goalId;
+	// 		if (goalId) {
+	// 			await updateGoalProgress(goalId);
+	// 		}
+	// 	} else {
+	// 		showNotification(result.message || 'Failed to update subgoal', 'error');
+	// 		const checkbox = document.querySelector(`[data-subgoal-id="${subgoalId}"]`);
+	// 		if (checkbox) {
+	// 			checkbox.checked = !completed;
+	// 		}
+	// 	}
+	// } catch (error) {
+	// 	console.error('Error toggling subgoal:', error);
+	// 	showNotification('Failed to update subgoal', 'error');
+	// }
 }
 
 /**
@@ -474,5 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Перевіряємо, чи знаходимося ми на сторінці цілей
 	if (document.querySelector('.goals-page')) {
 		initGoalsPage();
+		console.log('🎯 Goals page initialized, subgoal module should be auto-loaded');
 	}
 });

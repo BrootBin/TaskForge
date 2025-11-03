@@ -74,6 +74,13 @@
 	box-shadow: var(--shadow-card);
 }
 
+.goals-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+	gap: 20px;
+	width: 100%;
+}
+
 .section-header {
 	display: flex;
 	justify-content: space-between;
@@ -94,9 +101,13 @@
 	background: rgba(212, 175, 55, 0.05);
 	border: 1px solid rgba(212, 175, 55, 0.2);
 	border-radius: var(--border-radius-md);
-	padding: 20px;
-	margin-bottom: 20px;
+	padding: 24px;
+	margin-bottom: 0;
 	transition: all 0.3s ease;
+	width: 100%;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow: hidden;
 }
 
 .goal-card:hover {
@@ -193,25 +204,38 @@
 .subgoals-list {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: 0;
+	margin-top: 15px;
 }
 
 .subgoal-item {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	padding: 8px 12px;
-	background: rgba(0, 0, 0, 0.2);
-	border-radius: var(--border-radius-sm);
+	gap: 12px;
+	padding: 12px 16px;
+	background: rgba(212, 175, 55, 0.05);
+	border: 1px solid rgba(212, 175, 55, 0.1);
+	border-radius: var(--border-radius-md);
 	transition: all 0.3s ease;
+	margin-bottom: 8px;
 }
 
 .subgoal-item:hover {
-	background: rgba(0, 0, 0, 0.3);
+	background: rgba(212, 175, 55, 0.1);
+	border-color: rgba(212, 175, 55, 0.2);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(212, 175, 55, 0.1);
 }
 
 .subgoal-item.completed {
-	opacity: 0.6;
+	opacity: 0.7;
+	background: rgba(128, 128, 128, 0.05);
+	border-color: rgba(128, 128, 128, 0.1);
+}
+
+.subgoal-item.completed:hover {
+	background: rgba(128, 128, 128, 0.1);
+	border-color: rgba(128, 128, 128, 0.2);
 }
 
 .subgoal-item.completed .subgoal-name {
@@ -219,13 +243,83 @@
 }
 
 .subgoal-checkbox {
-	accent-color: var(--primary);
+	position: relative;
+	appearance: none;
+	-webkit-appearance: none;
+	width: 15px;
+	height: 15px;
+	border: 2px solid var(--primary);
+	border-radius: 4px;
+	background: transparent;
 	cursor: pointer;
+	margin-right: 12px;
+	transition: all 0.3s ease;
+	flex-shrink: 0;
+}
+
+.subgoal-checkbox:hover {
+	border-color: var(--primary-hover);
+	box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+	transform: scale(1.05);
+}
+
+.subgoal-checkbox:checked {
+	background: var(--primary);
+	border-color: var(--primary);
+	animation: checkbox-bounce 0.4s ease;
+}
+
+.subgoal-checkbox:checked::after {
+	content: '✓';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: white;
+	font-size: 10px;
+	font-weight: bold;
+	line-height: 1;
+}
+
+.subgoal-checkbox:focus {
+	outline: none;
+	box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+/* Анимация при отметке */
+@keyframes checkbox-bounce {
+	0% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.15);
+	}
+
+	100% {
+		transform: scale(1);
+	}
 }
 
 .subgoal-name {
-	color: var(--text-secondary);
+	color: var(--text-primary);
 	flex: 1;
+	padding: 2px 0;
+	font-size: 0.95rem;
+	line-height: 1.4;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	user-select: none;
+}
+
+.subgoal-name:hover {
+	color: var(--primary);
+}
+
+.subgoal-item.completed .subgoal-name {
+	text-decoration: line-through;
+	color: var(--text-secondary);
+	opacity: 0.7;
 }
 
 .no-subgoals {
@@ -239,22 +333,10 @@
 .empty-state {
 	text-align: center;
 	padding: 60px 20px;
-}
-
-.empty-icon {
-	font-size: 4rem;
-	color: var(--primary);
-	margin-bottom: 20px;
-}
-
-.empty-state h3 {
-	color: var(--text-primary);
-	margin-bottom: 10px;
-}
-
-.empty-state p {
-	color: var(--text-secondary);
-	margin-bottom: 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 /* === Бічна панель === */
@@ -422,90 +504,7 @@
 	font-size: 0.9rem;
 }
 
-/* === Кнопки === */
-.btn-icon {
-	background: transparent;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: var(--text-secondary);
-	padding: 8px 10px;
-	border-radius: var(--border-radius-sm);
-	cursor: pointer;
-	transition: all 0.3s ease;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.btn-icon:hover {
-	background: rgba(255, 255, 255, 0.1);
-	border-color: rgba(255, 255, 255, 0.3);
-}
-
-.delete-goal-btn {
-	border-color: rgba(255, 0, 0, 0.3);
-	color: #ff6b6b;
-}
-
-.delete-goal-btn:hover {
-	background: rgba(255, 0, 0, 0.1);
-	border-color: #ff6b6b;
-}
-
-.btn-primary {
-	background: linear-gradient(135deg, var(--primary), #ffdd44);
-	color: var(--bg-primary);
-	border: none;
-	padding: 12px 20px;
-	border-radius: var(--border-radius-sm);
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.3s ease;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-}
-
-.btn-primary:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
-}
-
-.btn-secondary {
-	background: transparent;
-	color: var(--text-primary);
-	border: 1px solid rgba(212, 175, 55, 0.3);
-	padding: 12px 20px;
-	border-radius: var(--border-radius-sm);
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.3s ease;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 8px;
-}
-
-.btn-secondary:hover {
-	background: rgba(212, 175, 55, 0.1);
-	border-color: var(--primary);
-}
-
-.btn-danger {
-	background: linear-gradient(135deg, #ff6b6b, #ff5252);
-	color: white;
-	border: none;
-	padding: 12px 20px;
-	border-radius: var(--border-radius-sm);
-	font-weight: 600;
-	cursor: pointer;
-	transition: all 0.3s ease;
-}
-
-.btn-danger:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
-}
+/* === Адаптивність === */
 
 /* === Модальні вікна === */
 .modal {
@@ -589,6 +588,11 @@
 		gap: 15px;
 	}
 
+	.goals-list {
+		grid-template-columns: 1fr !important;
+		gap: 15px;
+	}
+
 	.section-header {
 		flex-direction: column;
 		gap: 15px;
@@ -603,6 +607,21 @@
 
 	.form-actions {
 		flex-direction: column;
+	}
+
+	.subgoal-item {
+		padding: 10px 12px;
+		gap: 10px;
+	}
+
+	.subgoal-checkbox {
+		width: 14px;
+		height: 14px;
+		margin-right: 10px;
+	}
+
+	.subgoal-name {
+		font-size: 0.9rem;
 	}
 }
 

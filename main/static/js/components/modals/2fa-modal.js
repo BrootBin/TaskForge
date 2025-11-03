@@ -89,15 +89,6 @@ function init2FAModalHandlers() {
 			showHelpInfo();
 		});
 	}
-
-	// Закрытие по клику на оверлей
-	if (modalOverlay) {
-		console.log('🔧 Adding click handler to overlay');
-		modalOverlay.addEventListener('click', async (e) => {
-			console.log('🚫 Overlay clicked!');
-			await decline2FA();
-		});
-	}
 }
 
 /**

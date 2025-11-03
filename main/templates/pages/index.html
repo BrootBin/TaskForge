@@ -18,26 +18,43 @@
         <div class="habit-cards">
           {% if user_habits %}
             {% for habit in user_habits %}
-              <div class="habit-card">
-                {% if habit.name|lower == 'read' or habit.name|lower == 'reading' %}
-                  <i class="fa-solid fa-book-open"></i>
-                {% elif habit.name|lower == 'exercise' or habit.name|lower == 'workout' or habit.name|lower == 'gym' %}
-                  <i class="fa-solid fa-dumbbell"></i>
-                {% elif habit.name|lower == 'meditate' or habit.name|lower == 'meditation' %}
-                  <i class="fa-solid fa-spa"></i>
-                {% elif habit.name|lower == 'water' or habit.name|lower == 'hydrate' %}
-                  <i class="fa-solid fa-glass-water"></i>
-                {% elif habit.name|lower == 'sleep' %}
-                  <i class="fa-solid fa-bed"></i>
-                {% else %}
-                  <i class="fa-solid fa-check-circle"></i>
-                {% endif %}
-                <h3>{{ habit.name }}</h3>
-                {% if habit.streak_days > 0 %}
-                  <p>🔥 {{ habit.streak_days }} days in a row</p>
-                {% else %}
-                  <p>Start your streak today!</p>
-                {% endif %}
+              <div class="habit-card" data-habit-id="{{ habit.id }}">
+                <div class="habit-icon">
+                  {% if habit.name|lower == 'read' or habit.name|lower == 'reading' %}
+                    <i class="fa-solid fa-book-open"></i>
+                  {% elif habit.name|lower == 'exercise' or habit.name|lower == 'workout' or habit.name|lower == 'gym' %}
+                    <i class="fa-solid fa-dumbbell"></i>
+                  {% elif habit.name|lower == 'meditate' or habit.name|lower == 'meditation' %}
+                    <i class="fa-solid fa-spa"></i>
+                  {% elif habit.name|lower == 'water' or habit.name|lower == 'hydrate' %}
+                    <i class="fa-solid fa-glass-water"></i>
+                  {% elif habit.name|lower == 'sleep' %}
+                    <i class="fa-solid fa-bed"></i>
+                  {% else %}
+                    <i class="fa-solid fa-check-circle"></i>
+                  {% endif %}
+                </div>
+                <div class="habit-content">
+                  <h3>{{ habit.name }}</h3>
+                  <div class="habit-streak">
+                    {% if habit.current_streak > 0 %}
+                      <span class="streak-text">🔥 {{ habit.current_streak }} day{{ habit.current_streak|pluralize }} streak</span>
+                    {% else %}
+                      <span class="streak-text">Start your streak today!</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="habit-checkbox">
+                  <input type="checkbox" 
+                         class="habit-check" 
+                         id="habit-{{ habit.id }}"
+                         data-habit-id="{{ habit.id }}"
+                         {% if habit.is_checked_today %} checked {% endif %}
+                         {% if not habit.active %}disabled{% endif %}>
+                  <label class="checkbox-label" for="habit-{{ habit.id }}">
+                    <i class="fas fa-check"></i>
+                  </label>
+                </div>
               </div>
             {% endfor %}
           {% elif template_habits %}
@@ -120,14 +137,10 @@
 
               <ul class="subgoals-list">
                 {% for subgoal in goal.subgoals.all %}
-                  <li class="subgoal-item" data-index="{{ forloop.counter0 }}">
+                  <li class="subgoal-item {% if forloop.counter > 3 %}hidden-subgoal{% endif %}" data-index="{{ forloop.counter0 }}">
                     <span class="subgoal-checkbox"
                       data-subgoal-id="{{ subgoal.id }}"
-                      data-completed="{% if subgoal.completed %}
-                        true
-                      {% else %}
-                        false
-                      {% endif %}">
+                      data-completed="{% if subgoal.completed %}true{% else %}false{% endif %}">
                       {% if subgoal.completed %}
                         <i class="fa-solid fa-square-check"></i>
                       {% else %}
@@ -312,7 +325,10 @@
                 </div>
               {% endif %}
             </div>
-            <button class="confirm-btn" id="confirm-habit-template" disabled>Create Habit</button>
+            <div class="template-actions">
+              <button class="confirm-btn" id="confirm-habit-template" disabled>Create Habit</button>
+              <button class="edit-btn" id="edit-habit-template" disabled>Edit Template</button>
+            </div>
           </div>
 
           <!-- Form for creating your own habit -->
@@ -341,7 +357,6 @@
           </div>
         </div>
       </div>
-
       <!-- Step 2: Creating a goal -->
       <div class="create-step" id="create-step-2-goal" style="display: none;">
         <h2>New Goal</h2>
@@ -381,7 +396,10 @@
                 </div>
               {% endif %}
             </div>
-            <button class="confirm-btn" id="confirm-goal-template" disabled>Create Goal</button>
+            <div class="template-actions">
+              <button class="confirm-btn" id="confirm-goal-template" disabled>Create Goal</button>
+              <button class="edit-btn" id="edit-goal-template" disabled>Edit Template</button>
+            </div>
           </div>
 
           <!-- Form for creating your own goal -->
@@ -420,4 +438,8 @@
       </div>
     </div>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{% static 'js/components/calendar-habits.js' %}"></script>
 {% endblock %}

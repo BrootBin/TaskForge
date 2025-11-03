@@ -85,6 +85,10 @@ class Goal(models.Model):
         completed_subgoals = self.subgoals.filter(completed=True).count()
         return round((completed_subgoals / total_subgoals) * 100)
 
+    def get_completed_subgoals_count(self):
+        """Повертає кількість завершених підцілей"""
+        return self.subgoals.filter(completed=True).count()
+
     def __str__(self):
         return self.name
 
@@ -209,4 +213,103 @@ class UserActivity(models.Model):
         self.total_activities = 0
         self.week_start = timezone.now().date()
         self.save()
+
+
+class TechAdmin(models.Model):
+    """Тех адміністратори системи"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tech_admin')
+    is_active = models.BooleanField(default=True, help_text="Активний тех адміністратор")
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_tech_admins')
+    
+    class Meta:
+        verbose_name = "Тех адміністратор"
+        verbose_name_plural = "Тех адміністратори"
+
+    def __str__(self):
+        status = "Активний" if self.is_active else "Неактивний"
+        return f"{self.user.username} ({status})"
+
+
+class SupportMessage(models.Model):
+    """Модель повідомлень у технічну підтримку"""
+    STATUS_CHOICES = [
+        ('new', 'Новий'),
+        ('in_progress', 'В процесі'),
+        ('resolved', 'Вирішено'),
+        ('closed', 'Закрито'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Низький'),
+        ('medium', 'Середній'),
+        ('high', 'Високий'),
+        ('urgent', 'Срочний'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_messages', null=True, blank=True)
+    subject = models.CharField(max_length=200, verbose_name="Тема")
+    message = models.TextField(verbose_name="Повідомлення")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', verbose_name="Статус")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Приорітет")
+
+    # Інформація про проблему
+    problem_type = models.CharField(max_length=50, default='2fa_help', verbose_name="Тип проблеми")
+    user_agent = models.TextField(blank=True, null=True, verbose_name="User Agent")
+    ip_address = models.GenericIPAddressField(blank=True, null=True, verbose_name="IP адрес")
+
+    # Дати
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Створено")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Оновлено")
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Вирішено")
+
+    # Хто обробляє
+    assigned_to = models.ForeignKey(TechAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_messages', verbose_name="Призначено")
+    admin_notes = models.TextField(blank=True, null=True, verbose_name="Заметки адміністратора")
+
+    class Meta:
+        verbose_name = "Повідомлення в підтримку"
+        verbose_name_plural = "Повідомлення в підтримку"
+        ordering = ['-created_at']
+        
+    def __str__(self):
+        user_display = self.user.username if self.user else "Guest User"
+        return f"{user_display}: {self.subject[:50]} ({self.get_status_display()})"
+    
+    def mark_resolved(self, admin_user=None):
+        """Відзначити повідомлення як решене"""
+        self.status = 'resolved'
+        self.resolved_at = timezone.now()
+        if admin_user and hasattr(admin_user, 'tech_admin'):
+            self.assigned_to = admin_user.tech_admin
+        self.save()
+
+
+class PendingPasswordReset(models.Model):
+    """Модель для відстеження очікуваних скидань пароля через Telegram"""
+    telegram_id = models.CharField(max_length=50, verbose_name="Telegram ID")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    new_password = models.CharField(max_length=255, blank=True, null=True, verbose_name="New Password")
+    is_confirmed = models.BooleanField(default=False, verbose_name="Confirmed")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
+    expires_at = models.DateTimeField(verbose_name="Expires At")
+
+    class Meta:
+        verbose_name = "Password Reset"
+        verbose_name_plural = "Password Resets"
+
+    def __str__(self):
+        return f"Password reset for {self.user.username} via Telegram"
+    
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    @classmethod
+    def cleanup_expired(cls):
+        """Удаляет истекшие запросы на сброс пароля"""
+        from django.utils import timezone
+        expired_count = cls.objects.filter(expires_at__lt=timezone.now()).count()
+        cls.objects.filter(expires_at__lt=timezone.now()).delete()
+        return expired_count
 

@@ -4,13 +4,10 @@
 {% block title %}Habits - TaskForge{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/pages/habits.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/habits.css' %}?v=5">
 {% endblock %}
 
 {% block content %}
-<!-- Подключаем стили страницы привычек -->
-<link rel="stylesheet" href="{% static 'css/pages/habits.css' %}">
-
 <div class="habits-page">
     <!-- Заголовок сторінки -->
     <div class="page-header">
@@ -103,18 +100,6 @@
                                     <div class="stat-label">Success Rate</div>
                                 </div>
                             </div>
-
-                            <!-- Календарь активности (последние 30 дней) -->
-                            <div class="habit-calendar">
-                                <h4>Last 30 Days</h4>
-                                <div class="calendar-grid">
-                                    {% for day in habit.get_last_30_days %}
-                                        <div class="calendar-day {% if day.checked %}checked{% endif %} {% if day.is_today %}today{% endif %}"
-                                             title="{{ day.date|date:'F d, Y' }}{% if day.checked %} - Completed{% endif %}">
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
                         </div>
                     {% endfor %}
                 </div>
@@ -182,6 +167,9 @@
                     </div>
                 </form>
             </div>
+
+            <!-- Разделительная линия -->
+            <div class="section-divider"></div>
 
             <!-- Шаблони привычек -->
             {% if habit_templates %}

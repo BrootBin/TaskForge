@@ -57,6 +57,37 @@
 	color: var(--primary);
 }
 
+/* === Кнопки помощи в модалке авторизации === */
+.auth-help-section {
+	margin-top: 15px;
+	padding-top: 15px;
+	border-top: 1px solid var(--border-color);
+	text-align: center;
+}
+
+.help-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--primary);
+	text-decoration: none;
+	font-size: 14px;
+	padding: 8px 12px;
+	border-radius: var(--border-radius-md);
+	transition: all 0.2s ease;
+	background-color: transparent;
+}
+
+.help-link:hover {
+	background-color: var(--bg-hover);
+	color: var(--primary-hover);
+	text-decoration: none;
+}
+
+.help-link i {
+	font-size: 16px;
+}
+
 /* === Модальное окно создания цели/привычки === */
 #create-modal {
 	display: none;
@@ -69,7 +100,7 @@
 	z-index: 1000;
 }
 
-#create-modal.active {
+#create-modal.show {
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -650,5 +681,481 @@
 	.profile-dropdown {
 		right: -10px;
 		min-width: 160px;
+	}
+}
+
+/* Стили для шагов модального окна создания */
+.create-step {
+	animation: fadeIn 0.3s ease-in-out;
+}
+
+.create-step h2 {
+	color: var(--text-primary);
+	margin-bottom: 20px;
+	text-align: center;
+}
+
+.back-btn {
+	background: none;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-size: 14px;
+	margin-bottom: 20px;
+	padding: 5px 10px;
+	border-radius: var(--border-radius-sm);
+	transition: background-color 0.2s ease;
+}
+
+.back-btn:hover {
+	background-color: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+.template-toggle {
+	display: flex;
+	background-color: var(--bg-secondary);
+	border-radius: var(--border-radius-md);
+	margin-bottom: 20px;
+	padding: 4px;
+}
+
+.template-btn {
+	flex: 1;
+	background: none;
+	border: none;
+	padding: 10px 15px;
+	border-radius: var(--border-radius-sm);
+	color: var(--text-secondary);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	font-size: 14px;
+}
+
+.template-btn.active {
+	background-color: var(--primary);
+	color: var(--text-primary);
+}
+
+.template-btn:hover:not(.active) {
+	background-color: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+/* Стили для кнопок действий с шаблонами */
+.template-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	align-items: center;
+	/* Выравниваем по центру, а не растягиваем */
+	margin-top: 20px;
+	min-height: 44px;
+}
+
+.confirm-btn,
+.edit-btn {
+	min-width: 120px;
+	height: 44px;
+	padding: 10px 20px;
+	border-radius: var(--border-radius-md);
+	cursor: pointer;
+	transition: all 0.2s ease;
+	font-size: 14px;
+	border: none;
+	text-align: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	vertical-align: baseline;
+	/* Принудительно выравниваем по baseline */
+	position: relative;
+	/* Убираем любые абсолютные позиционирования */
+}
+
+.confirm-btn {
+	background-color: var(--primary);
+	color: var(--text-primary);
+	border: 1px solid var(--primary);
+}
+
+.confirm-btn:hover:not(:disabled) {
+	background-color: var(--primary-hover);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.confirm-btn:disabled {
+	background-color: var(--bg-secondary);
+	color: var(--text-secondary);
+	border-color: var(--border-color);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.edit-btn {
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+	border: 1px solid var(--border-color);
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.3s ease;
+	margin-top: 20px;
+}
+
+.edit-btn.visible {
+	opacity: 1;
+	visibility: visible;
+}
+
+.edit-btn:hover:not(:disabled) {
+	background-color: var(--primary);
+	color: white;
+	border-color: var(--primary);
+	transform: translateY(-1px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.edit-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+	background-color: var(--bg-secondary);
+	color: var(--text-secondary);
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* === Модальное окно технической поддержки === */
+#support-modal {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.7);
+	z-index: 1000;
+	justify-content: center;
+	align-items: center;
+}
+
+#support-modal.show {
+	display: flex;
+}
+
+#support-modal .modal-content {
+	background-color: var(--bg-main);
+	border-radius: var(--border-radius-lg);
+	max-width: 600px;
+	width: 90%;
+	max-height: 80vh;
+	overflow-y: auto;
+	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+	animation: fadeIn 0.3s ease;
+}
+
+/* Большая версия модального окна для поддержки */
+#support-modal .support-modal-large {
+	max-width: 800px;
+	width: 95%;
+	max-height: 90vh;
+}
+
+/* Стили для динамических полей */
+#dynamic-fields {
+	margin: 1rem 0;
+}
+
+#dynamic-fields .form-group {
+	margin-bottom: 1rem;
+}
+
+#dynamic-fields .form-row {
+	display: flex;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+#dynamic-fields .form-row .form-group {
+	flex: 1;
+	min-width: 250px;
+}
+
+#support-modal .modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20px 25px;
+	border-bottom: 1px solid var(--border-color);
+}
+
+#support-modal .modal-header h3 {
+	margin: 0;
+	color: var(--text-primary);
+	font-size: 1.4rem;
+}
+
+#support-modal .modal-close {
+	background: none;
+	border: none;
+	font-size: 1.5rem;
+	cursor: pointer;
+	color: var(--text-secondary);
+	padding: 5px;
+	transition: color 0.2s ease;
+}
+
+#support-modal .modal-close:hover {
+	color: var(--text-primary);
+}
+
+#support-modal .modal-body {
+	padding: 25px;
+}
+
+#support-modal .form-group {
+	margin-bottom: 20px;
+}
+
+#support-modal .form-group label {
+	display: block;
+	margin-bottom: 8px;
+	color: var(--text-primary);
+	font-weight: 500;
+}
+
+#support-modal .form-group select,
+#support-modal .form-group textarea,
+#support-modal .form-group input {
+	width: 100%;
+	padding: 12px;
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md);
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+	font-size: 14px;
+	transition: border-color 0.2s ease;
+	box-sizing: border-box;
+}
+
+#support-modal .form-group select:focus,
+#support-modal .form-group textarea:focus,
+#support-modal .form-group input:focus {
+	outline: none;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+#support-modal .form-group .form-help {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: var(--text-secondary);
+	font-style: italic;
+}
+
+#support-modal .form-group textarea {
+	resize: vertical;
+	min-height: 120px;
+	font-family: inherit;
+	line-height: 1.4;
+}
+
+#support-modal .char-counter {
+	text-align: right;
+	margin-top: 5px;
+	font-size: 12px;
+	color: var(--text-secondary);
+}
+
+#support-modal .form-note {
+	background-color: var(--bg-secondary);
+	padding: 15px;
+	border-radius: var(--border-radius-md);
+	border-left: 4px solid var(--primary);
+	margin-top: 20px;
+}
+
+#support-modal .form-note p {
+	margin: 0;
+	font-size: 13px;
+	color: var(--text-secondary);
+	line-height: 1.4;
+}
+
+#support-modal .form-note code {
+	background-color: var(--bg-main);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-family: 'Courier New', monospace;
+	font-size: 12px;
+	color: var(--primary);
+	border: 1px solid var(--border-color);
+}
+
+#support-modal .modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	padding: 20px 25px;
+	border-top: 1px solid var(--border-color);
+	background-color: var(--bg-secondary);
+	border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+}
+
+#support-modal .btn-cancel,
+#support-modal .btn-primary {
+	padding: 10px 20px;
+	border-radius: var(--border-radius-md);
+	font-size: 14px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: none;
+	min-width: 100px;
+}
+
+#support-modal .btn-cancel {
+	background-color: transparent;
+	color: var(--text-secondary);
+	border: 1px solid var(--border-color);
+}
+
+#support-modal .btn-cancel:hover {
+	background-color: var(--bg-hover);
+	color: var(--text-primary);
+}
+
+#support-modal .btn-primary {
+	background-color: var(--primary);
+	color: white;
+}
+
+#support-modal .btn-primary:hover:not(:disabled) {
+	background-color: var(--primary-hover);
+}
+
+#support-modal .btn-primary:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* === Плавающая кнопка поддержки === */
+.support-fab {
+	position: fixed;
+	bottom: 30px;
+	right: 30px;
+	width: 60px;
+	height: 60px;
+	background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+	border-radius: 50%;
+	border: none;
+	cursor: pointer;
+	z-index: 999;
+	box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	font-size: 24px;
+}
+
+.support-fab:hover {
+	transform: translateY(-3px) scale(1.05);
+	box-shadow: 0 6px 25px rgba(255, 215, 0, 0.4);
+}
+
+.support-fab:active {
+	transform: translateY(-1px) scale(1.02);
+}
+
+.support-fab i {
+	transition: transform 0.2s ease;
+}
+
+.support-fab:hover i {
+	transform: scale(1.1);
+}
+
+.support-badge {
+	position: absolute;
+	top: -8px;
+	right: -12px;
+	background: var(--error);
+	color: white;
+	font-size: 10px;
+	font-weight: 600;
+	padding: 4px 8px;
+	border-radius: 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+	white-space: nowrap;
+	animation: badge-bounce 2s infinite;
+	pointer-events: none;
+}
+
+@keyframes badge-bounce {
+
+	0%,
+	100% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.1);
+	}
+}
+
+/* Анимация появления кнопки */
+.support-fab.fade-in {
+	animation: fabFadeIn 0.5s ease forwards;
+}
+
+.support-fab.pulse {
+	animation: fabPulse 2s infinite;
+}
+
+@keyframes fabFadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(20px) scale(0.8);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes fabPulse {
+
+	0%,
+	100% {
+		box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+	}
+
+	50% {
+		box-shadow: 0 4px 25px rgba(255, 215, 0, 0.6);
+	}
+}
+
+/* Респонсивность для мобильных устройств */
+@media (max-width: 768px) {
+	.support-fab {
+		bottom: 20px;
+		right: 20px;
+		width: 56px;
+		height: 56px;
+		font-size: 22px;
 	}
 }
