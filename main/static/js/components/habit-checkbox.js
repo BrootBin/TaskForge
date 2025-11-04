@@ -6,16 +6,11 @@
  * Ініціалізує обработчики чекбоксов привычек на главной странице
  */
 function initHabitCheckboxHandlers() {
-	console.log('🔄 Initializing habit checkbox handlers');
 	const habitCheckboxes = document.querySelectorAll('.habit-check');
 	const habitLabels = document.querySelectorAll('.checkbox-label');
-	console.log('📋 Found habit checkboxes:', habitCheckboxes.length);
-	console.log('🏷️ Found habit labels:', habitLabels.length);
 
 	// Обработчик для чекбоксов
 	habitCheckboxes.forEach((checkbox, index) => {
-		console.log(`📝 Setting up checkbox ${index + 1}:`, checkbox);
-
 		checkbox.addEventListener('change', async function () {
 			// Проверяем, был ли это клик по лейблу
 			if (this.dataset.labelClick === 'true') {
@@ -23,14 +18,12 @@ function initHabitCheckboxHandlers() {
 				return; // Игнорируем событие change, так как обработчик уже вызван
 			}
 
-			console.log('✅ Checkbox change event!', this);
 			await handleHabitCheckboxChange(this);
 		});
 	});
 
 	// Обработчик для лейблов (если чекбокс скрыт)
 	habitLabels.forEach((label, index) => {
-		console.log(`🏷️ Setting up label ${index + 1}:`, label);
 
 		label.addEventListener('click', async function (e) {
 			e.preventDefault(); // Предотвращаем дефолтное поведение лейбла
@@ -128,6 +121,13 @@ async function handleHabitCheckboxChange(checkbox) {
 				setTimeout(() => {
 					window.checkDailyHabitsStatus();
 				}, 500);
+			}
+
+			// Обновляем прогрессные круги активности
+			if (typeof updateProgressCircles === 'function') {
+				setTimeout(() => {
+					updateProgressCircles();
+				}, 100);
 			}
 		} else {
 			// В случае ошибки возвращаем чекбокс в предыдущее состояние

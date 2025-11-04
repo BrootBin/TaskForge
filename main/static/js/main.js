@@ -28,11 +28,22 @@ document.write('<script src="/static/js/components/index-subgoals.js"></script>'
 document.write('<script src="/static/js/components/habit-checkbox.js"></script>');
 document.write('<script src="/static/js/debug.js"></script>');
 
+// МАКСИМАЛЬНО РАННЕЕ начало загрузки данных привычек
+document.addEventListener('DOMContentLoaded', function () {
+	// Запускаем предварительную загрузку данных НЕМЕДЛЕННО
+	if (typeof preloadHabitsData === 'function') {
+		preloadHabitsData();
+	}
+
+	// ДОПОЛНИТЕЛЬНО: если календарь готов, запускаем загрузку сразу
+	if (typeof loadHabitsCompletionHistory === 'function') {
+		loadHabitsCompletionHistory();
+	}
+}, { once: true });
+
 
 // Ініціалізація скриптів при завантаженні DOM
 document.addEventListener('DOMContentLoaded', function () {
-	console.log('TaskForge JS initialized');
-
 	// Ініціалізація глобальних утиліт
 	initGlobalUtils();
 

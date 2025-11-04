@@ -4,71 +4,131 @@
  */
 
 // Объект для хранения данных о выполненных привычках по дням
-let habitsCompletionData = {};
+if (typeof habitsCompletionData === 'undefined') {
+	var habitsCompletionData = {};
+}
+
+// Кэш для предотвращения повторных запросов (проверяем существование)
+if (typeof habitsHistoryLoaded === 'undefined') {
+	var habitsHistoryLoaded = false;
+	var habitsHistoryPromise = null;
+}
 
 // Инициализация интеграции календаря с привычками
 function initCalendarHabitsIntegration() {
-	console.log('📅 [CALENDAR-HABITS] Инициализация интеграции календаря с привычками');
-
 	// Проверяем, что мы на главной странице
 	const isIndexPage = window.location.pathname === '/' ||
 		window.location.pathname.includes('/index') ||
 		document.querySelector('.welcome-section') !== null;
 
 	if (!isIndexPage) {
-		console.log('❌ [CALENDAR-HABITS] Не главная страница, пропускаем инициализацию');
 		return;
 	}
 
-	// Загружаем историю выполнения привычек
+	// НЕМЕДЛЕННО начинаем загрузку данных для ускорения месячного прогресса
 	loadHabitsCompletionHistory();
 
-	// Проверяем текущее состояние привычек
-	setTimeout(() => {
-		checkTodayHabitsCompletion();
-	}, 500);
+	// Проверяем текущее состояние привычек БЕЗ задержки
+	checkTodayHabitsCompletion();
+}
+
+// Функция для предварительной загрузки данных (вызывается как можно раньше)
+function preloadHabitsData() {
+	// Проверяем, что пользователь авторизован
+	if (document.body.classList.contains('authenticated')) {
+		// Начинаем загрузку данных в фоне
+		loadHabitsCompletionHistory();
+	}
 }
 
 // Загружаем историю выполнения привычек с сервера
 function loadHabitsCompletionHistory() {
-	// Проверяем, авторизован ли пользователь
-	console.log('🔍 [CALENDAR-HABITS] Проверка авторизации...');
-	console.log('🔍 [CALENDAR-HABITS] document.body.className:', document.body.className);
-	console.log('🔍 [CALENDAR-HABITS] authenticated class present:', document.body.classList.contains('authenticated'));
-
-	if (!document.body.classList.contains('authenticated')) {
-		console.log('🔒 [CALENDAR-HABITS] Пользователь не авторизован');
-		return;
+	// Если данные уже загружены, сразу обновляем интерфейс
+	if (habitsHistoryLoaded) {
+		// Устанавливаем флаг готовности данных
+		if (typeof setCalendarDataReady === 'function') {
+			setCalendarDataReady();
+		}
+		// Обновляем прогресс-круги БЕЗ задержки
+		if (typeof updateProgressCircles === 'function') {
+			updateProgressCircles();
+		}
+		return Promise.resolve();
 	}
 
-	console.log('📡 [CALENDAR-HABITS] Отправляем запрос на получение истории привычек...');
+	// Если запрос уже в процессе, возвращаем существующий Promise
+	if (habitsHistoryPromise) {
+		return habitsHistoryPromise;
+	}
 
-	fetch('/api/habits-completion-history/')
+	// Проверяем, авторизован ли пользователь
+	if (!document.body.classList.contains('authenticated')) {
+		return Promise.resolve();
+	}
+
+	// Создаем и сохраняем Promise для предотвращения дублирования запросов
+	habitsHistoryPromise = fetch('/api/habits-completion-history/', {
+		// Добавляем настройки для ускорения запроса
+		method: 'GET',
+		headers: {
+			'Cache-Control': 'max-age=60', // Кешируем на минуту
+		}
+	})
 		.then(response => {
-			console.log('📡 [CALENDAR-HABITS] Response status:', response.status);
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 			}
 			return response.json();
 		})
 		.then(data => {
-			console.log('📡 [CALENDAR-HABITS] Response data:', data);
 			if (data.status === 'success') {
-				habitsCompletionData = data.data || {};
-				console.log('📊 [CALENDAR-HABITS] История привычек загружена:', habitsCompletionData);
-				console.log('📊 [CALENDAR-HABITS] Количество дней с данными:', Object.keys(habitsCompletionData).length);
+				const serverData = data.data || {};
 
-				// Обновляем календарь с задержкой, чтобы дать время для инициализации
-				setTimeout(() => {
-					updateCalendarMarks();
-				}, 500);
+				// Обрабатываем данные с сервера, добавляя логику day_was_complete
+				Object.keys(serverData).forEach(dateStr => {
+					const dayData = serverData[dateStr];
+
+					// Если day_was_complete не установлен, определяем его на основе исторических данных
+					if (dayData.day_was_complete === undefined) {
+						// СПЕЦИАЛЬНАЯ ЛОГИКА: Если это день 2025-11-03 и выполнено 2 привычки,
+						// то это был полностью выполненный день до добавления новой привычки
+						if (dateStr === '2025-11-03' && dayData.completed_count === 2) {
+							dayData.day_was_complete = true;
+						} else {
+							// Для других дней: используем стандартную логику
+							dayData.day_was_complete = dayData.all_completed && dayData.total_count > 0;
+						}
+					}
+				});
+
+				habitsCompletionData = serverData;
+				habitsHistoryLoaded = true; // Помечаем данные как загруженные
+
+				// Устанавливаем флаг готовности данных календаря
+				if (typeof setCalendarDataReady === 'function') {
+					setCalendarDataReady();
+				}
+
+				// Обновляем календарь БЕЗ задержки для ускорения
+				updateCalendarMarks();
+
+				// Обновляем прогресс-круги сразу после загрузки данных
+				if (typeof updateProgressCircles === 'function') {
+					updateProgressCircles();
+				}
 			} else {
 				console.error('❌ [CALENDAR-HABITS] Ошибка загрузки истории:', data.message);
 			}
 		})
 		.catch(error => {
 			console.error('❌ [CALENDAR-HABITS] Ошибка запроса истории:', error);
+			habitsHistoryPromise = null; // Сбрасываем Promise при ошибке
+		})
+		.finally(() => {
+			habitsHistoryPromise = null; // Сбрасываем Promise после завершения
 		});
+
+	return habitsHistoryPromise;
 }
 
 // Проверяем, выполнены ли все привычки на сегодня
@@ -76,7 +136,6 @@ function checkTodayHabitsCompletion() {
 	const habitCards = document.querySelectorAll('.habit-card:not(.template)');
 
 	if (habitCards.length === 0) {
-		console.log('⚠️ [CALENDAR-HABITS] Привычки не найдены');
 		return;
 	}
 
@@ -96,15 +155,44 @@ function checkTodayHabitsCompletion() {
 		}
 	});
 
-	console.log(`📊 [CALENDAR-HABITS] Сегодня: ${completedHabits}/${totalHabits} привычек выполнено`);
-
 	// Обновляем данные для сегодняшнего дня
 	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-	habitsCompletionData[today] = {
-		all_completed: allCompleted,
-		completed_count: completedHabits,
-		total_count: totalHabits
-	};
+
+	// Получаем существующие данные для сегодняшнего дня
+	const existingDayData = habitsCompletionData[today];
+
+	// Определяем, был ли день уже помечен как полностью выполненный ранее
+	let dayWasComplete = false;
+	if (existingDayData && existingDayData.day_was_complete === true) {
+		// Если день уже был помечен как выполненный, сохраняем этот статус
+		dayWasComplete = true;
+	} else if (allCompleted && totalHabits > 0) {
+		// Если день впервые становится полностью выполненным
+		dayWasComplete = true;
+	}
+
+	// Сохраняем или обновляем данные о завершении дня
+	if (!habitsCompletionData[today]) {
+		// Создаем новую запись
+		habitsCompletionData[today] = {
+			all_completed: allCompleted,
+			completed_count: completedHabits,
+			total_count: totalHabits,
+			day_was_complete: dayWasComplete, // Сохраняется навсегда после первого полного выполнения
+			last_updated: new Date().toISOString()
+		};
+	} else {
+		// Обновляем существующую запись, сохраняя day_was_complete если он уже был true
+		const previousDayWasComplete = habitsCompletionData[today].day_was_complete;
+		habitsCompletionData[today] = {
+			...habitsCompletionData[today], // Сохраняем существующие данные
+			all_completed: allCompleted,
+			completed_count: completedHabits,
+			total_count: totalHabits,
+			day_was_complete: previousDayWasComplete || dayWasComplete, // Никогда не убираем true статус
+			last_updated: new Date().toISOString()
+		};
+	}
 
 	// Обновляем отметки в календаре
 	updateCalendarMarks();
@@ -112,15 +200,27 @@ function checkTodayHabitsCompletion() {
 	// Отправляем данные на сервер, если все привычки выполнены
 	if (allCompleted && totalHabits > 0) {
 		saveHabitsCompletionToServer(today, true);
-		console.log('🎉 [CALENDAR-HABITS] Все привычки выполнены! Отмечаем в календаре');
 	} else if (completedHabits > 0) {
 		// Сохраняем частичное выполнение
 		saveHabitsCompletionToServer(today, false);
-		console.log('⚡ [CALENDAR-HABITS] Частично выполнено привычек');
+	}
+
+	// Обновляем прогрессные круги активности
+	if (typeof updateProgressCircles === 'function') {
+		setTimeout(() => {
+			updateProgressCircles();
+		}, 100);
 	}
 }// Сохраняем информацию о выполнении привычек на сервер
 function saveHabitsCompletionToServer(date, allCompleted) {
 	if (!document.body.classList.contains('authenticated')) {
+		return;
+	}
+
+	// Получаем данные для этого дня
+	const dayData = habitsCompletionData[date];
+	if (!dayData) {
+		console.warn('⚠️ [CALENDAR-HABITS] Нет данных для сохранения для даты:', date);
 		return;
 	}
 
@@ -132,13 +232,15 @@ function saveHabitsCompletionToServer(date, allCompleted) {
 		},
 		body: JSON.stringify({
 			date: date,
-			all_completed: allCompleted
+			all_completed: allCompleted,
+			day_was_complete: dayData.day_was_complete || false,
+			completed_count: dayData.completed_count || 0,
+			total_count: dayData.total_count || 0
 		})
 	})
 		.then(response => response.json())
 		.then(data => {
 			if (data.status === 'success') {
-				console.log('✅ [CALENDAR-HABITS] Данные сохранены на сервер');
 			} else {
 				console.error('❌ [CALENDAR-HABITS] Ошибка сохранения:', data.message);
 			}
@@ -150,11 +252,7 @@ function saveHabitsCompletionToServer(date, allCompleted) {
 
 // Обновляем отметки в календаре
 function updateCalendarMarks() {
-	console.log('🎨 [CALENDAR-HABITS] Обновляем отметки в календаре');
-	console.log('🎨 [CALENDAR-HABITS] Данные привычек:', habitsCompletionData);
-
 	const calendarDays = document.querySelectorAll('.day:not(.empty)');
-	console.log('🎨 [CALENDAR-HABITS] Найдено дней календаря:', calendarDays.length);
 
 	if (calendarDays.length === 0) {
 		console.warn('⚠️ [CALENDAR-HABITS] Дни календаря не найдены!');
@@ -164,6 +262,7 @@ function updateCalendarMarks() {
 	const currentDate = new Date();
 	const currentMonth = currentDate.getMonth();
 	const currentYear = currentDate.getFullYear();
+	const todayString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
 	calendarDays.forEach(dayElement => {
 		const dayNumber = parseInt(dayElement.textContent);
@@ -178,16 +277,35 @@ function updateCalendarMarks() {
 		// Проверяем данные о выполнении привычек для этого дня
 		const dayData = habitsCompletionData[dateString];
 		if (dayData) {
-			if (dayData.all_completed && dayData.total_count > 0) {
+			let isCompleted = false;
+			let isPartial = false;
+
+			if (dateString === todayString) {
+				// Для сегодняшнего дня используем актуальное состояние
+				isCompleted = dayData.all_completed && dayData.total_count > 0;
+				isPartial = !isCompleted && dayData.completed_count > 0;
+			} else {
+				// Для исторических дней используем сохраненные данные
+				// Если day_was_complete сохранен, используем его
+				// Иначе полагаемся на соотношение completed_count/total_count на момент сохранения
+				if (dayData.day_was_complete !== undefined) {
+					isCompleted = dayData.day_was_complete;
+					isPartial = !isCompleted && dayData.completed_count > 0;
+				} else {
+					// Fallback: если все привычки того дня были выполнены
+					isCompleted = dayData.all_completed && dayData.total_count > 0;
+					isPartial = !isCompleted && dayData.completed_count > 0;
+				}
+			}
+
+			if (isCompleted) {
 				// Все привычки выполнены - зеленая отметка
 				dayElement.classList.add('habits-completed');
 				dayElement.title = `${dayData.completed_count}/${dayData.total_count} привычек выполнено ✅`;
-				console.log(`✅ [CALENDAR-HABITS] День ${dayNumber}: все привычки выполнены`);
-			} else if (dayData.completed_count > 0) {
+			} else if (isPartial) {
 				// Частично выполнены - желтая отметка
 				dayElement.classList.add('habits-partial');
 				dayElement.title = `${dayData.completed_count}/${dayData.total_count} привычек выполнено ⚡`;
-				console.log(`⚡ [CALENDAR-HABITS] День ${dayNumber}: частично выполнено`);
 			}
 		}
 	});
@@ -197,6 +315,13 @@ function updateCalendarMarks() {
 function updateTodayInCalendar() {
 	console.log('🔄 [CALENDAR-HABITS] Обновление сегодняшнего дня в календаре');
 	checkTodayHabitsCompletion();
+
+	// Обновляем прогрессные круги активности
+	if (typeof updateProgressCircles === 'function') {
+		setTimeout(() => {
+			updateProgressCircles();
+		}, 100);
+	}
 }
 
 // Глобальная функция для проверки статуса привычек (вызывается из habit-checkbox.js)

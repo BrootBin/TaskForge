@@ -5,6 +5,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Preload критичних ресурсів для прискорення загрузки -->
+    <link rel="preload" href="{% static 'css/main.css' %}" as="style" />
+    <link rel="preload" href="{% static 'js/main.js' %}" as="script" />
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@300;400;600&display=swap" as="style" />
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://kit.fontawesome.com/a9d811fd14.js" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet" />
@@ -255,7 +261,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
-    <script src="{% static 'js/components/support-modal.js' %}"></script>
     {% block extra_js %}{% endblock %}
     <script>
         {% if show_2fa_modal and username %}

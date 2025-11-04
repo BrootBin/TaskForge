@@ -4,7 +4,9 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse
 from django.conf import settings
-from .models import Notification, TelegramProfile, Pending2FA, SubGoal, Goal, Habit
+from django.views.decorators.cache import cache_page
+from django.core.cache import cache
+from .models import Notification, TelegramProfile, Pending2FA, SubGoal, Goal, Habit, HabitCheckin
 from .tasks import send_2fa_request
 from .activity_tracker import track_user_activity, get_user_weekly_activity
 from django.contrib.auth.decorators import login_required
@@ -1143,6 +1145,10 @@ def habit_checkin(request):
         
         habit.save()
         
+        # ОЧИСТКА КЕША: Очищаем кеш истории привычек при изменении
+        cache_key = f'habits_history_{request.user.id}'
+        cache.delete(cache_key)
+        
         message = f"Habit '{habit.name}' marked as {'completed' if checkin.completed else 'not completed'} for {checkin_date}"
         
         return JsonResponse({
@@ -1322,20 +1328,27 @@ def send_support_message(request):
 @login_required
 def habits_completion_history(request):
     """
-    API для получения истории выполнения привычек по дням
+    API для получения истории выполнения привычек по дням (ОПТИМИЗИРОВАНО + КЕШИРОВАНИЕ)
     """
     try:
         from django.utils import timezone
         from datetime import timedelta
+        from django.db.models import Count, Q
         
-        print(f"[HABITS-API] Loading habits completion history for user: {request.user.username}")
+        # Проверяем кеш для этого пользователя
+        cache_key = f'habits_history_{request.user.id}'
+        cached_data = cache.get(cache_key)
+        
+        if cached_data:
+            return JsonResponse({
+                "status": "success",
+                "data": cached_data
+            })
         
         # Получаем привычки пользователя
         user_habits = Habit.objects.filter(user=request.user, active=True)
-        print(f"[HABITS-API] Found {user_habits.count()} active habits")
         
         if not user_habits.exists():
-            print("[HABITS-API] No habits found, returning empty data")
             return JsonResponse({
                 "status": "success",
                 "data": {}
@@ -1345,26 +1358,36 @@ def habits_completion_history(request):
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=30)
         
+        # ОПТИМИЗАЦИЯ: Получаем все check-ins за период одним запросом
+        habit_ids = list(user_habits.values_list('id', flat=True))
+        checkins = HabitCheckin.objects.filter(
+            habit_id__in=habit_ids,
+            date__range=[start_date, end_date],
+            completed=True
+        ).values('date', 'habit_id')
+        
+        # Группируем checkins по дням для быстрого доступа
+        checkins_by_date = {}
+        for checkin in checkins:
+            date_str = checkin['date'].strftime('%Y-%m-%d')
+            if date_str not in checkins_by_date:
+                checkins_by_date[date_str] = set()
+            checkins_by_date[date_str].add(checkin['habit_id'])
+        
+        total_habits = user_habits.count()
         completion_data = {}
         
-        # Проходим по каждому дню
+        # ОПТИМИЗАЦИЯ: Обрабатываем все дни за один проход
         current_date = start_date
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
             
-            total_habits = user_habits.count()
-            completed_habits = 0
-            
             # Для сегодняшнего дня используем актуальное состояние
             if current_date == end_date:
-                for habit in user_habits:
-                    if habit.is_checked_today():  # Вызываем как метод
-                        completed_habits += 1
+                completed_habits = sum(1 for habit in user_habits if habit.is_checked_today())
             else:
-                # Для прошлых дней проверяем через checkins
-                for habit in user_habits:
-                    if habit.checkins.filter(date=current_date, completed=True).exists():
-                        completed_habits += 1
+                # Для прошлых дней используем предзагруженные данные
+                completed_habits = len(checkins_by_date.get(date_str, set()))
             
             all_completed = (completed_habits == total_habits and total_habits > 0)
             
@@ -1376,7 +1399,9 @@ def habits_completion_history(request):
             
             current_date += timedelta(days=1)
         
-        print(f"[HABITS-API] Returning completion data for {len(completion_data)} days")
+        # Кешируем результат на 5 минут (для прошлых дней данные редко меняются)
+        cache.set(cache_key, completion_data, 300)
+        
         return JsonResponse({
             "status": "success",
             "data": completion_data
@@ -1386,9 +1411,6 @@ def habits_completion_history(request):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Error getting habits completion history: {str(e)}")
-        print(f"[HABITS-API] ERROR: {str(e)}")
-        import traceback
-        print(f"[HABITS-API] Traceback: {traceback.format_exc()}")
         return JsonResponse({"status": "error", "message": "Failed to load habits history"}, status=500)
 
 @login_required

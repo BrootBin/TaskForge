@@ -7,7 +7,7 @@ django.setup()
 
 import logging
 import aiohttp
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -36,52 +36,149 @@ TOKEN = getattr(settings, 'TELEGRAM_BOT_TOKEN', None)
 # --- Commands ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "👋 Hi! Send /bind <key> to connect your account.\n\n"
-        "Available commands:\n"
-        "/help - Show detailed help\n"
-        "/bind <key> - Link your TaskForge account\n"
-        "/reset_password - Reset your password (for linked accounts)\n"
-        "/unbind - Unlink your account"
-    )
+    telegram_id = str(update.effective_user.id)
+    
+    # Проверяем, привязан ли уже аккаунт
+    profile = await sync_to_async(lambda: TelegramProfile.objects.filter(
+        telegram_id=telegram_id, 
+        connected=True
+    ).first())()
+    
+    if profile:
+        # Пользователь уже подключен
+        user = await sync_to_async(lambda: profile.user)()
+        await update.message.reply_text(
+            f"🎉 <b>Welcome back, {user.username}!</b>\n\n"
+            "✅ Your Telegram account is already linked to TaskForge.\n\n"
+            "<b>Available commands:</b>\n"
+            "📊 /status - Check your habits progress\n"
+            "❓ /help - Show all commands\n"
+            "🔒 /reset_password - Reset your password\n"
+            "🔓 /unbind - Unlink your account\n\n"
+            "💪 Ready to track your habits? Check your progress with /status!",
+            parse_mode='HTML'
+        )
+    else:
+        # Пользователь не подключен
+        await update.message.reply_text(
+            "👋 <b>Welcome to TaskForge Bot!</b>\n\n"
+            "🔗 To get started, you need to link your TaskForge account.\n\n"
+            "<b>How to connect:</b>\n"
+            "1️⃣ Log in to TaskForge website\n"
+            "2️⃣ Go to your profile settings\n"
+            "3️⃣ Copy your binding key\n"
+            "4️⃣ Send <code>/bind &lt;your_key&gt;</code> to this bot\n\n"
+            "<b>Available commands:</b>\n"
+            "❓ /help - Show detailed help\n"
+            "🔗 /bind &lt;key&gt; - Link your TaskForge account\n\n"
+            "🚀 Let's get you connected!",
+            parse_mode='HTML'
+        )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_text = """
-🤖 **TaskForge Bot Commands:**
+    telegram_id = str(update.effective_user.id)
+    
+    # Проверяем, привязан ли аккаунт
+    profile = await sync_to_async(lambda: TelegramProfile.objects.filter(
+        telegram_id=telegram_id, 
+        connected=True
+    ).first())()
+    
+    if profile:
+        # Пользователь подключен - показываем полный список команд
+        user = await sync_to_async(lambda: profile.user)()
+        help_text = f"""
+🤖 <b>TaskForge Bot - Welcome {user.username}!</b>
 
-/start - Welcome message
-/help - Show this help
-/bind <key> - Link your TaskForge account with the provided key
-/unbind - Unlink your Telegram account from TaskForge
-/reset_password - Reset your TaskForge password (for linked accounts)
-/notify - Test notification (for testing)
+<b>📊 Tracking Commands:</b>
+📈 /status - Check your daily habits progress
+🚀 /start - Welcome message
 
-💡 **How to link your account:**
-1. Log in to TaskForge website
-2. Copy your binding key from profile settings
-3. Send `/bind <your_key>` to this bot
-4. Enable notifications and 2FA in your profile settings
+<b>⚙️ Account Management:</b>
+🔒 /reset_password - Reset your TaskForge password
+🔓 /unbind - Unlink your Telegram account
+❓ /help - Show this help menu
 
-🔒 **Password Recovery:**
-If you forgot your password but have Telegram linked, use `/reset_password` to securely change it.
-    """
-    await update.message.reply_text(help_text, parse_mode="Markdown")
+<b>� Tips:</b>
+• Use /status daily to track your progress
+• Enable notifications in TaskForge settings for reminders
+• Use 2FA for additional account security
+
+<b>� Quick Access:</b>
+Use the menu button (☰) next to message input for easy command access!
+        """
+    else:
+        # Пользователь не подключен - показываем инструкции по подключению
+        help_text = """
+🤖 <b>TaskForge Bot - Get Started!</b>
+
+<b>� First Time Setup:</b>
+🚀 /start - Welcome message and instructions
+🔗 /bind &lt;key&gt; - Link your TaskForge account
+
+<b>💡 How to connect your account:</b>
+1️⃣ Log in to TaskForge website
+2️⃣ Go to profile settings and copy your 6-digit binding key
+3️⃣ Send <code>/bind &lt;your_key&gt;</code> to this bot
+4️⃣ Enable notifications and 2FA in your profile settings
+
+<b>🔒 After Connecting:</b>
+Once linked, you'll get access to:
+• 📊 Daily habits progress tracking
+• 🔔 Smart notifications and reminders
+• 🔒 Secure password reset via Telegram
+• 📈 Motivational progress updates
+
+<b>Need help?</b> Start with /start to see connection instructions!
+        """
+    
+    await update.message.reply_text(help_text, parse_mode="HTML")
 
 async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    telegram_id = str(update.effective_user.id)
+    
+    # ПРОВЕРКА: Запрещаем использование команды если аккаунт уже привязан
+    existing_connection = await sync_to_async(lambda: TelegramProfile.objects.filter(
+        telegram_id=telegram_id, 
+        connected=True
+    ).first())()
+    
+    if existing_connection:
+        user = await sync_to_async(lambda: existing_connection.user)()
+        await update.message.reply_text(
+            f"⚠️ <b>Account Already Linked</b>\n\n"
+            f"Your Telegram account is already connected to <b>{user.username}</b>.\n\n"
+            f"If you want to link a different account:\n"
+            f"1️⃣ Use /unbind to disconnect current account\n"
+            f"2️⃣ Then use /bind with your new key\n\n"
+            f"Or use /status to check your current habits progress!",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Проверяем корректность команды
     if len(context.args) != 1:
-        await update.message.reply_text("Usage: /bind <key>")
+        await update.message.reply_text(
+            "❌ <b>Invalid Usage</b>\n\n"
+            "Please use: <code>/bind &lt;your_key&gt;</code>\n\n"
+            "💡 <b>How to get your key:</b>\n"
+            "1️⃣ Log in to TaskForge website\n"
+            "2️⃣ Go to profile settings\n"
+            "3️⃣ Copy your 6-digit binding key\n"
+            "4️⃣ Send <code>/bind &lt;key&gt;</code>",
+            parse_mode='HTML'
+        )
         return
 
     code = context.args[0]
     profile = await sync_to_async(lambda: TelegramProfile.objects.filter(bind_code=code).first())()
 
     if profile:
-        if profile.connected and profile.telegram_id == str(update.effective_user.id):
+        if profile.connected and profile.telegram_id == telegram_id:
             await update.message.reply_text("✅ This Telegram account is already linked!")
             return
 
-        # Перевіряємо чи цей telegram_id вже прив'язаний до іншого аккаунта
-        telegram_id = str(update.effective_user.id)
+        # Проверяем чи цей telegram_id уже привязан к другому аккаунту (дополнительная проверка)
         existing_profile = await sync_to_async(lambda: TelegramProfile.objects.filter(telegram_id=telegram_id).first())()
         
         if existing_profile and existing_profile != profile:
@@ -93,9 +190,20 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             profile.connected = True
             profile.bind_code = None
             await sync_to_async(profile.save)()
-            await update.message.reply_text("✅ Account successfully linked! You can now enable notifications and 2FA.")
+            
+            user = await sync_to_async(lambda: profile.user)()
+            await update.message.reply_text(
+                f"🎉 <b>Account Successfully Linked!</b>\n\n"
+                f"✅ Your Telegram is now connected to <b>{user.username}</b>\n\n"
+                f"<b>What's next?</b>\n"
+                f"📊 Use /status to check your habits\n"
+                f"🔔 Enable notifications in TaskForge settings\n"
+                f"🔐 Enable 2FA for extra security\n\n"
+                f"🚀 You're all set to track your habits!",
+                parse_mode='HTML'
+            )
         except IntegrityError as e:
-            # Обробка помилки дублювання telegram_id
+            # Обработка ошибки дублирования telegram_id
             if "telegram_id" in str(e) and "unique constraint" in str(e):
                 await update.message.reply_text("❌ This Telegram account is already linked to another user!")
             else:
@@ -105,7 +213,16 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ An unexpected error occurred. Please try again.")
             logging.error(f"Unexpected error linking Telegram account: {e}")
     else:
-        await update.message.reply_text("❌ Invalid or expired key.")
+        await update.message.reply_text(
+            "❌ <b>Invalid or Expired Key</b>\n\n"
+            "The binding key you provided is not valid or has expired.\n\n"
+            "💡 <b>Please:</b>\n"
+            "1️⃣ Log in to TaskForge website\n"
+            "2️⃣ Generate a new binding key in settings\n"
+            "3️⃣ Try /bind again with the new key\n\n"
+            "⏰ <b>Note:</b> Binding keys expire for security.",
+            parse_mode='HTML'
+        )
 
 # --- Inline 2FA confirmation ---
 async def send_2fa_request_message(bot, telegram_id, username):
@@ -233,7 +350,7 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
     # Проверяем, что аккаунт привязан
-    profile = await sync_to_async(lambda: TelegramProfile.objects.filter(
+    profile = await sync_to_async(lambda: TelegramProfile.objects.select_related('user').filter(
         telegram_id=telegram_id, 
         connected=True
     ).first())()
@@ -246,6 +363,9 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
         return
+    
+    # Получаем пользователя асинхронно
+    user = await sync_to_async(lambda: profile.user)()
     
     # Проверяем, нет ли активного сброса пароля
     existing_reset = await sync_to_async(lambda: PendingPasswordReset.objects.filter(
@@ -268,7 +388,7 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     reset_request = await sync_to_async(PendingPasswordReset.objects.create)(
         telegram_id=telegram_id,
-        user=profile.user,
+        user=user,
         expires_at=expires_at
     )
     
@@ -289,7 +409,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     
     # Проверяем, есть ли активная сессия сброса пароля
-    pending_reset = await sync_to_async(lambda: PendingPasswordReset.objects.filter(
+    pending_reset = await sync_to_async(lambda: PendingPasswordReset.objects.select_related('user').filter(
         telegram_id=telegram_id,
         is_confirmed=False,
         expires_at__gt=timezone.now()
@@ -350,7 +470,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         
         # Применяем новый пароль
-        user = pending_reset.user
+        user = await sync_to_async(lambda: pending_reset.user)()
         user.password = pending_reset.new_password
         await sync_to_async(user.save)()
         
@@ -388,13 +508,120 @@ async def unbind(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("❌ No linked account found for this Telegram ID.")
 
+# --- Status command ---
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает статус привычек пользователя"""
+    telegram_id = str(update.effective_user.id)
+    
+    # Проверяем, что аккаунт привязан
+    profile = await sync_to_async(lambda: TelegramProfile.objects.select_related('user').filter(
+        telegram_id=telegram_id, 
+        connected=True
+    ).first())()
+    
+    if not profile:
+        await update.message.reply_text(
+            "❌ <b>Account Not Linked</b>\n\n"
+            "Your Telegram account is not linked to TaskForge.\n"
+            "Please use /bind <key> to link your account first.",
+            parse_mode='HTML'
+        )
+        return
+    
+    try:
+        # Получаем пользователя
+        user = await sync_to_async(lambda: profile.user)()
+        
+        # Получаем привычки пользователя
+        from main.models import Habit, HabitCheckin
+        from django.utils import timezone
+        
+        habits = await sync_to_async(lambda: list(
+            Habit.objects.filter(user=user, active=True)
+        ))()
+        
+        if not habits:
+            await update.message.reply_text(
+                "📊 <b>Habits Status</b>\n\n"
+                "You don't have any active habits yet.\n"
+                "Create some habits in TaskForge to track your progress!",
+                parse_mode='HTML'
+            )
+            return
+        
+        today = timezone.now().date()
+        status_text = "📊 <b>Today's Habits Status</b>\n\n"
+        
+        completed_count = 0
+        total_count = len(habits)
+        
+        for habit in habits:
+            # Проверяем выполнение привычки сегодня
+            is_completed = await sync_to_async(lambda h=habit: 
+                HabitCheckin.objects.filter(habit=h, date=today, completed=True).exists()
+            )()
+            
+            if is_completed:
+                status_text += f"✅ {habit.name}\n"
+                completed_count += 1
+            else:
+                status_text += f"⭕ {habit.name}\n"
+        
+        # Добавляем общую статистику
+        percentage = (completed_count / total_count * 100) if total_count > 0 else 0
+        status_text += f"\n📈 <b>Progress: {completed_count}/{total_count} ({percentage:.0f}%)</b>"
+        
+        if completed_count == total_count:
+            status_text += "\n\n🎉 <b>Perfect day! All habits completed!</b>"
+        elif completed_count == 0:
+            status_text += "\n\n💪 <b>Time to start your habits!</b>"
+        else:
+            status_text += f"\n\n🔥 <b>Keep going! {total_count - completed_count} habits left!</b>"
+        
+        await update.message.reply_text(status_text, parse_mode='HTML')
+        
+    except Exception as e:
+        logging.error(f"Error getting habits status: {e}")
+        await update.message.reply_text(
+            "❌ <b>Error</b>\n\n"
+            "Failed to get your habits status. Please try again later.",
+            parse_mode='HTML'
+        )
+
+# --- Bot Commands Setup ---
+async def setup_bot_commands(application):
+    """Настройка меню команд бота"""
+    commands = [
+        BotCommand("start", "🚀 Start using TaskForge"),
+        BotCommand("help", "❓ Get help and available commands"),
+        BotCommand("bind", "🔗 Link Telegram to TaskForge account"),
+        BotCommand("unbind", "🔓 Unlink Telegram account"),
+        BotCommand("reset_password", "🔒 Reset TaskForge password"),
+        BotCommand("status", "📊 Check your habits status"),
+    ]
+    
+    try:
+        await application.bot.set_my_commands(commands)
+        logging.info("✅ Bot commands menu set successfully!")
+    except Exception as e:
+        logging.error(f"❌ Failed to set bot commands: {e}")
+
 # --- Application setup ---
 application = ApplicationBuilder().token(TOKEN).build()
+
+# Настраиваем команды после инициализации приложения
+async def post_init(application):
+    """Функция вызывается после инициализации приложения"""
+    await setup_bot_commands(application)
+
+application.post_init = post_init
+
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(CommandHandler("bind", bind))
 application.add_handler(CommandHandler("unbind", unbind))
 application.add_handler(CommandHandler("reset_password", reset_password))
+application.add_handler(CommandHandler("status", status))
 application.add_handler(CommandHandler("notify", notify))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 application.add_handler(CallbackQueryHandler(button_callback))

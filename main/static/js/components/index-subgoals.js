@@ -102,14 +102,11 @@ function applyIndexSubgoalCompletionStyle(nameElement, subgoalElement, isComplet
 		nameElement.style.setProperty('text-decoration', 'line-through', 'important');
 		nameElement.style.setProperty('color', 'var(--text-tertiary)', 'important');
 		nameElement.style.setProperty('opacity', '0.7', 'important');
-
-		console.log('✅ [INDEX] Застосовано стиль зачеркування для завершеної підцілі:', nameElement.textContent?.trim());
 	} else {
 		// Подцель не выполнена - убираем зачеркивание  
 		nameElement.style.removeProperty('text-decoration');
 		nameElement.style.removeProperty('color');
 		nameElement.style.removeProperty('opacity');
-		console.log('⬜ [INDEX] Прибрано стиль зачеркування для незавершеної підцілі:', nameElement.textContent?.trim());
 	}
 }
 
@@ -129,19 +126,15 @@ function initIndexSubgoalHandlers() {
 
 	// Диагностика карточек целей на главной странице
 	const allGoalCards = document.querySelectorAll('.goal-card');
-	console.log('🎯 [INDEX] Знайдено карточок цілей:', allGoalCards.length);
 
 	// Ищем подцели с использованием span-чекбоксов (характерно для главной страницы)
 	const subgoalCheckboxes = document.querySelectorAll('.subgoal-checkbox');
-	console.log('📝 [INDEX] Знайдено підцілей:', subgoalCheckboxes.length);
 
 	if (subgoalCheckboxes.length === 0) {
-		console.log('⚠️ [INDEX] Підцілі не знайдені на головній сторінці');
 		return;
 	}
 
 	// Инициализируем состояние подцелей
-	console.log('=== [INDEX] ІНІЦІАЛІЗАЦІЯ СТАНУ ПІДЦІЛЕЙ ===');
 	subgoalCheckboxes.forEach(checkbox => {
 		// На главной странице используются span-элементы с data-completed
 		// Очищаем значение от лишних пробелов и приводим к нижнему регистру
@@ -150,21 +143,16 @@ function initIndexSubgoalHandlers() {
 		const subgoalElement = checkbox.closest('.subgoal-item');
 		const nameElement = subgoalElement ? subgoalElement.querySelector('.subgoal-name') : null;
 
-		console.log(`[INDEX] Subgoal ${checkbox.dataset.subgoalId}: completed="${completedValue}" -> ${isCompleted}`);
-
 		// Применяем правильные стили при инициализации
 		applyIndexSubgoalCompletionStyle(nameElement, subgoalElement, isCompleted);
 	});
-	console.log('=== [INDEX] КІНЕЦЬ ІНІЦІАЛІЗАЦІЇ ===');
 
 	// Инициализируем прогресс для всех целей
-	console.log('=== [INDEX] ІНІЦІАЛІЗАЦІЯ ПРОГРЕСУ ЦІЛЕЙ ===');
 	allGoalCards.forEach(goalCard => {
 		updateIndexGoalProgressLocal(goalCard);
 		// Убираем сортировку при инициализации, так как используем автозамену
 		// sortSubgoalsInGoalCard(goalCard);
 	});
-	console.log('=== [INDEX] КІНЕЦЬ ІНІЦІАЛІЗАЦІЇ ПРОГРЕСУ ===');
 
 	// Добавляем обработчики кликов
 	subgoalCheckboxes.forEach(checkbox => {
@@ -180,7 +168,6 @@ function initIndexSubgoalHandlers() {
 	// Инициализируем интеграцию с календарем привычек
 	if (typeof initCalendarHabitsIntegration === 'function') {
 		initCalendarHabitsIntegration();
-		console.log('📅 [INDEX] Инициализирована интеграция с календарем привычек');
 	}
 }
 
@@ -192,7 +179,6 @@ function addIndexSubgoalClickHandler(checkbox) {
 	}
 
 	checkbox.setAttribute('data-index-handler-attached', 'true');
-	console.log('🔗 [INDEX] Додаємо обробник для підцілі:', checkbox.dataset.subgoalId);
 
 	// На главной странице используются span-элементы
 	const isSpanCheckbox = checkbox.tagName.toLowerCase() === 'span';
@@ -449,20 +435,16 @@ function updateIndexGoalProgressLocal(goalCard) {
 
 	const progressPercent = Math.round((completedSubgoals / totalSubgoals) * 100);
 
-	console.log('⚡ [INDEX] Локальний розрахунок прогресу:', `${completedSubgoals}/${totalSubgoals} = ${progressPercent}%`);
-
 	// Обновляем прогресс-бар для главной страницы (.progress)
 	const progressBar = goalCard.querySelector('.progress');
 	if (progressBar) {
 		progressBar.style.width = `${progressPercent}%`;
-		console.log('📊 [INDEX] Оновлено прогрес-бар: .progress →', progressPercent + '%');
 	}
 
 	// Обновляем процент для главной страницы (.percent)
 	const percentElement = goalCard.querySelector('.percent');
 	if (percentElement) {
 		percentElement.textContent = `${progressPercent}%`;
-		console.log('🔢 [INDEX] Оновлено відсоток: .percent →', progressPercent + '%');
 	}
 
 	// Обновляем счетчик подцелей в заголовке
@@ -488,6 +470,13 @@ function updateIndexGoalProgressLocal(goalCard) {
 	// Обновляем календарь привычек если все привычки выполнены
 	if (typeof updateTodayInCalendar === 'function') {
 		updateTodayInCalendar();
+	}
+
+	// Обновляем прогрессные круги активности
+	if (typeof updateProgressCircles === 'function') {
+		setTimeout(() => {
+			updateProgressCircles();
+		}, 100);
 	}
 }
 
@@ -555,6 +544,13 @@ function updateIndexGoalProgress(goalIdOrElement) {
 				// Обновляем календарь
 				if (typeof updateTodayInCalendar === 'function') {
 					updateTodayInCalendar();
+				}
+
+				// Обновляем прогрессные круги активности
+				if (typeof updateProgressCircles === 'function') {
+					setTimeout(() => {
+						updateProgressCircles();
+					}, 100);
 				}
 			}
 		})
@@ -759,11 +755,11 @@ function removeIndexGoalOverlay() {
 // Инициализация обработчика клавиши Escape для главной страницы
 function initIndexEscapeHandler() {
 	// Проверяем, что обработчик еще не добавлен
-	if (document.hasAttribute('data-index-escape-handler')) {
+	if (window.indexEscapeHandlerInitialized) {
 		return;
 	}
 
-	document.setAttribute('data-index-escape-handler', 'true');
+	window.indexEscapeHandlerInitialized = true;
 
 	document.addEventListener('keydown', function (event) {
 		if (event.key === 'Escape') {
