@@ -14,7 +14,7 @@ document.write('<script src="/static/js/components/modals/base-modal.js"></scrip
 document.write('<script src="/static/js/components/modals/auth-modal.js"></script>');
 document.write('<script src="/static/js/components/modals/2fa-modal.js"></script>');
 document.write('<script src="/static/js/components/modals/create-modal.js"></script>');
-document.write('<script src="/static/js/components/support-modal.js"></script>');
+document.write('<script src="/static/js/components/modals/support-modal.js"></script>');
 
 // Остальные компоненты
 document.write('<script src="/static/js/utils/templates.js"></script>');
@@ -107,39 +107,67 @@ function initGlobalUtils() {
 
 	// Ініціалізація глобальної функції для показу повідомлень
 	window.showMessage = function (message, type = 'info', duration = 5000) {
-		// Перевіряємо наявність контейнера
-		let messageContainer = document.getElementById('message-container');
-		if (!messageContainer) {
-			// Створюємо контейнер для повідомлень
-			messageContainer = document.createElement('div');
-			messageContainer.id = 'message-container';
-			messageContainer.style.position = 'fixed';
-			messageContainer.style.top = '20px';
-			messageContainer.style.right = '20px';
-			messageContainer.style.zIndex = '10000';
-			messageContainer.style.maxWidth = '400px';
-			document.body.appendChild(messageContainer);
-		}
+		console.log('🌟 [GLOBAL] window.showMessage called:', message, type);
+
+		// Удаляем существующие уведомления
+		const existingNotifications = document.querySelectorAll('.global-message-notification');
+		existingNotifications.forEach(notif => notif.remove());
 
 		// Створюємо елемент повідомлення
 		const messageElement = document.createElement('div');
-		messageElement.className = `message ${type}`;
+		messageElement.className = `global-message-notification message-${type}`;
 		messageElement.textContent = message;
 
-		// Стилізація повідомлення з використанням CSS-змінних
-		messageElement.style.backgroundColor = type === 'error' ? 'var(--danger)' :
-			type === 'success' ? 'var(--success)' :
-				'var(--primary)';
-		messageElement.style.color = 'var(--text-primary)';
-		messageElement.style.padding = '15px';
-		messageElement.style.borderRadius = 'var(--border-radius-md)';
-		messageElement.style.marginBottom = '10px';
-		messageElement.style.boxShadow = 'var(--shadow-modal)';
-		messageElement.style.transition = 'opacity 0.5s ease-in-out';
-		messageElement.style.maxWidth = '350px';
+		// Новые стили с темным фоном и золотой окантовкой для успеха
+		let styles = '';
+		if (type === 'success') {
+			styles = `
+				background: linear-gradient(135deg, #2c3e50, #34495e);
+				border-left: 4px solid #FFD700;
+				color: #FFD700;
+			`;
+		} else if (type === 'error') {
+			styles = `
+				background: linear-gradient(135deg, #e74c3c, #c0392b);
+				color: white;
+			`;
+		} else if (type === 'warning') {
+			styles = `
+				background: linear-gradient(135deg, #fff3cd, #ffeeba);
+				color: #856404;
+				border-left: 4px solid #ffc107;
+			`;
+		} else {
+			styles = `
+				background: linear-gradient(135deg, #2196F3, #0b7dda);
+				color: white;
+			`;
+		}
 
-		// Додаємо повідомлення в контейнер
-		messageContainer.appendChild(messageElement);
+		// Применяем стили
+		messageElement.style.cssText = `
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			${styles}
+			padding: 15px 20px;
+			border-radius: 8px;
+			z-index: 10000;
+			opacity: 0;
+			transform: translateX(100%);
+			transition: all 0.3s ease;
+			max-width: 350px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+			font-weight: 500;
+		`;
+
+		document.body.appendChild(messageElement);
+
+		// Анимация появления
+		setTimeout(() => {
+			messageElement.style.opacity = '1';
+			messageElement.style.transform = 'translateX(0)';
+		}, 100);
 
 		// Видаляємо повідомлення через 5 секунд
 		setTimeout(() => {
@@ -149,6 +177,6 @@ function initGlobalUtils() {
 					messageElement.remove();
 				}
 			}, 500);
-		}, 5000);
+		}, duration || 5000);
 	};
 }

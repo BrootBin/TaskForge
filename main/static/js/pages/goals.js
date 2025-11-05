@@ -104,6 +104,9 @@ function resetSubgoals() {
 async function handleGoalCreation(e) {
 	e.preventDefault();
 
+	console.log('🚀 [GOALS] handleGoalCreation started');
+	console.log('🔍 [GOALS] window.showMessage available:', typeof window.showMessage === 'function');
+
 	const formData = new FormData(e.target);
 	const subgoals = [];
 
@@ -134,19 +137,40 @@ async function handleGoalCreation(e) {
 		});
 
 		const result = await response.json();
+		console.log('📦 [GOALS] Server response:', result);
 
-		if (result.status === 'success') {
-			showNotification('Goal created successfully!', 'success');
-			// Перезагружаємо сторінку для оновлення списку цілей
+		if (result.status === 'success' || result.status === 'ok') {
+			// Прямо вызываем глобальную функцию
+			console.log('✅ [GOALS] Goal created successfully!');
+			window.showMessage('Goal created successfully!', 'success');
+
+			// Скрываем форму создания
+			const createSection = document.getElementById('create-goal-section');
+			if (createSection) {
+				createSection.style.display = 'none';
+			}
+
+			// Очищаем форму
+			e.target.reset();
+
+			// Удаляем дополнительные поля подцелей (оставляем только первое)
+			const allSubgoals = document.querySelectorAll('.subgoal-input');
+			for (let i = 1; i < allSubgoals.length; i++) {
+				allSubgoals[i].remove();
+			}
+
+			// Сразу перезагружаем страницу
 			setTimeout(() => {
+				console.log('� [GOALS] Reloading page immediately...');
 				window.location.reload();
 			}, 1000);
 		} else {
-			showNotification(result.message || 'Failed to create goal', 'error');
+			console.log('❌ [GOALS] Failed to create goal:', result.message);
+			window.showMessage(result.message || 'Failed to create goal', 'error');
 		}
 	} catch (error) {
-		console.error('Error creating goal:', error);
-		showNotification('Failed to create goal', 'error');
+		console.error('💥 [GOALS] Error creating goal:', error);
+		window.showMessage('Failed to create goal', 'error');
 	}
 }
 
@@ -223,7 +247,11 @@ async function deleteGoal(goalId) {
 		const result = await response.json();
 
 		if (result.status === 'success') {
-			showNotification('Goal deleted successfully!', 'success');
+			if (typeof window.showMessage === 'function') {
+				window.showMessage('Goal deleted successfully!', 'success');
+			} else {
+				showNotification('Goal deleted successfully!', 'success');
+			}
 			// Видаляємо елемент з DOM
 			const goalCard = document.querySelector(`[data-goal-id="${goalId}"]`);
 			if (goalCard) {
@@ -236,11 +264,19 @@ async function deleteGoal(goalId) {
 				}, 300);
 			}
 		} else {
-			showNotification(result.message || 'Failed to delete goal', 'error');
+			if (typeof window.showMessage === 'function') {
+				window.showMessage(result.message || 'Failed to delete goal', 'error');
+			} else {
+				showNotification(result.message || 'Failed to delete goal', 'error');
+			}
 		}
 	} catch (error) {
 		console.error('Error deleting goal:', error);
-		showNotification('Failed to delete goal', 'error');
+		if (typeof window.showMessage === 'function') {
+			window.showMessage('Failed to delete goal', 'error');
+		} else {
+			showNotification('Failed to delete goal', 'error');
+		}
 	}
 }
 
@@ -358,7 +394,11 @@ async function updateGoalProgress(goalId) {
 				// Відмічаємо ціль як завершену, якщо потрібно
 				if (result.goal_completed) {
 					goalCard.classList.add('completed');
-					showNotification('🎉 Goal completed! Congratulations!', 'success');
+					if (typeof window.showMessage === 'function') {
+						window.showMessage('🎉 Goal completed! Congratulations!', 'success');
+					} else {
+						showNotification('🎉 Goal completed! Congratulations!', 'success');
+					}
 				}
 			}
 		}
@@ -395,19 +435,25 @@ async function useGoalTemplate(templateId) {
 		});
 
 		const result = await response.json();
+		console.log('📦 [GOALS] Template response:', result);
 
-		if (result.status === 'success') {
-			showNotification('Goal created from template!', 'success');
-			// Перезавантажуємо сторінку для оновлення списку цілей
+		if (result.status === 'success' || result.status === 'ok') {
+			// Используем глобальную функцию для гарантии правильного стиля
+			console.log('✅ [GOALS] Goal created from template!');
+			window.showMessage('Goal created from template!', 'success');
+
+			// Сразу перезагружаем страницу
 			setTimeout(() => {
+				console.log('� [GOALS] Template - reloading page immediately...');
 				window.location.reload();
 			}, 1000);
 		} else {
-			showNotification(result.message || 'Failed to use template', 'error');
+			console.log('❌ [GOALS] Template failed:', result.message);
+			window.showMessage(result.message || 'Failed to use template', 'error');
 		}
 	} catch (error) {
-		console.error('Error using template:', error);
-		showNotification('Failed to use template', 'error');
+		console.error('💥 [GOALS] Template error:', error);
+		window.showMessage('Failed to use template', 'error');
 	}
 }
 
@@ -422,18 +468,58 @@ function getCsrfToken() {
  * Показ повідомлень
  */
 function showNotification(message, type = 'info') {
+	console.log('🎯 [GOALS] showNotification called:', message, type); // Отладка
+
+	// Если есть глобальная функция, используем её
+	if (typeof window.showMessage === 'function') {
+		console.log('🌐 [GOALS] Using global window.showMessage');
+		window.showMessage(message, type);
+		return;
+	}
+
+	console.log('📍 [GOALS] Using local notification system');
+
+	// Удаляем существующие уведомления
+	const existingNotifications = document.querySelectorAll('.goal-notification');
+	existingNotifications.forEach(notif => notif.remove());
+
 	// Створюємо елемент повідомлення
 	const notification = document.createElement('div');
-	notification.className = `notification notification-${type}`;
+	notification.className = `goal-notification notification-${type}`;
 	notification.textContent = message;
+
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
 
 	// Стилі для повідомлень
 	notification.style.cssText = `
 		position: fixed;
 		top: 20px;
 		right: 20px;
-		background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-		color: white;
+		${styles}
 		padding: 15px 20px;
 		border-radius: 8px;
 		z-index: 1001;
@@ -442,6 +528,7 @@ function showNotification(message, type = 'info') {
 		transition: all 0.3s ease;
 		max-width: 300px;
 		box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+		font-weight: 500;
 	`;
 
 	document.body.appendChild(notification);

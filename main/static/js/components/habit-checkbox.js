@@ -6,8 +6,18 @@
  * Ініціалізує обработчики чекбоксов привычек на главной странице
  */
 function initHabitCheckboxHandlers() {
+	// Проверяем, что мы на главной странице, а не на странице привычек
+	if (document.querySelector('.habits-page')) {
+		console.log('🚫 Habits page detected, skipping habit-checkbox init');
+		return;
+	}
+
 	const habitCheckboxes = document.querySelectorAll('.habit-check');
 	const habitLabels = document.querySelectorAll('.checkbox-label');
+
+	console.log('🔄 Initializing habit checkbox handlers for main page');
+	console.log('📋 Found checkboxes:', habitCheckboxes.length);
+	console.log('📋 Found labels:', habitLabels.length);
 
 	// Обработчик для чекбоксов
 	habitCheckboxes.forEach((checkbox, index) => {
@@ -55,12 +65,21 @@ function initHabitCheckboxHandlers() {
  * Обработчик изменения состояния чекбокса привычки
  */
 async function handleHabitCheckboxChange(checkbox) {
+	// Проверяем, не выполняется ли уже запрос для этой привычки
+	const habitId = checkbox.dataset.habitId;
+	if (checkbox.dataset.processing === 'true') {
+		console.log('🔄 Request already in progress for habit:', habitId);
+		return;
+	}
+
 	console.log('🔄 Handling habit checkbox change');
-	console.log('🎯 Habit ID:', checkbox.dataset.habitId);
+	console.log('🎯 Habit ID:', habitId);
 	console.log('☑️ Is checked:', checkbox.checked);
 
-	const habitId = checkbox.dataset.habitId;
 	const isChecked = checkbox.checked;
+
+	// Устанавливаем флаг обработки
+	checkbox.dataset.processing = 'true';
 
 	try {
 		const response = await fetch('/api/habit-checkin/', {
@@ -96,8 +115,10 @@ async function handleHabitCheckboxChange(checkbox) {
 				streakText.style.transition = 'color 0.3s ease';
 				streakText.style.color = isChecked ? '#4CAF50' : '#FF9800';
 
-				if (data.current_streak > 0) {
-					streakText.textContent = `🔥 ${data.current_streak} day${data.current_streak > 1 ? 's' : ''} streak`;
+				// Используем streak_days из ответа API
+				const currentStreak = data.streak_days || 0;
+				if (currentStreak > 0) {
+					streakText.textContent = `🔥 ${currentStreak} day${currentStreak > 1 ? 's' : ''} streak`;
 				} else {
 					streakText.textContent = 'Start your streak today!';
 				}
@@ -112,7 +133,7 @@ async function handleHabitCheckboxChange(checkbox) {
 			if (window.showMessage) {
 				window.showMessage(
 					isChecked ? 'Habit marked as completed!' : 'Habit unchecked',
-					'success'
+					isChecked ? 'success' : 'warning'
 				);
 			}
 
@@ -133,6 +154,14 @@ async function handleHabitCheckboxChange(checkbox) {
 			// В случае ошибки возвращаем чекбокс в предыдущее состояние
 			checkbox.checked = !isChecked;
 
+			// Логируем ошибку для дебага
+			console.error('HTTP Error:', response.status, response.statusText);
+
+			// Получаем текст ошибки
+			response.text().then(errorText => {
+				console.error('Error response:', errorText);
+			});
+
 			if (window.showMessage) {
 				window.showMessage('Error updating habit. Please try again.', 'error');
 			}
@@ -145,5 +174,8 @@ async function handleHabitCheckboxChange(checkbox) {
 			window.showMessage('Network error. Please check your connection.', 'error');
 		}
 		console.error('Error updating habit:', error);
+	} finally {
+		// Снимаем флаг обработки
+		checkbox.dataset.processing = 'false';
 	}
 }

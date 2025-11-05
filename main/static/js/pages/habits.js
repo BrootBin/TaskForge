@@ -82,19 +82,24 @@ function handleHabitCreation(e) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			if (data.status === 'success') {
-				showMessage('Habit created successfully!', 'success');
-				// Перезагружаем страницу для обновления списка
-				setTimeout(() => {
-					window.location.reload();
-				}, 1000);
+			if (data.status === 'success' || data.status === 'ok') {
+				showNotification('Habit created successfully!', 'success');
+
+				// Скрываем форму создания
+				const createSection = document.getElementById('create-habit-section');
+				const createForm = document.getElementById('create-habit-form');
+				if (createSection) createSection.style.display = 'none';
+				if (createForm) createForm.reset();
+
+				// Обновляем список привычек без перезагрузки
+				refreshHabitsListAndStats();
 			} else {
-				showMessage(data.message || 'Failed to create habit', 'error');
+				showNotification(data.message || 'Failed to create habit', 'error');
 			}
 		})
 		.catch(error => {
 			console.error('Error:', error);
-			showMessage('An error occurred while creating habit', 'error');
+			showNotification('An error occurred while creating habit', 'error');
 		});
 }
 
@@ -105,17 +110,40 @@ function initHabitDeletion() {
 	const deleteModal = document.getElementById('delete-modal');
 	const cancelDeleteBtn = document.getElementById('cancel-delete');
 	const confirmDeleteBtn = document.getElementById('confirm-delete');
-	const closeBtn = deleteModal ? deleteModal.querySelector('.close') : null;
+	const closeBtn = deleteModal ? deleteModal.querySelector('.modal-close') : null;
+	const modalOverlay = deleteModal ? deleteModal.querySelector('.modal-overlay') : null;
 	let currentHabitId = null;
+
+	// Функция показа модального окна
+	function showModal() {
+		if (deleteModal) {
+			deleteModal.style.display = 'flex';
+			deleteModal.classList.add('show');
+			// Добавляем небольшую задержку для анимации
+			setTimeout(() => {
+				deleteModal.classList.add('active');
+			}, 10);
+		}
+	}
+
+	// Функция скрытия модального окна
+	function hideModal() {
+		if (deleteModal) {
+			deleteModal.classList.remove('active');
+			setTimeout(() => {
+				deleteModal.style.display = 'none';
+				deleteModal.classList.remove('show');
+				currentHabitId = null;
+			}, 300);
+		}
+	}
 
 	// Обробка кліків на кнопки видалення
 	document.addEventListener('click', (e) => {
 		if (e.target.closest('.delete-habit-btn')) {
 			const btn = e.target.closest('.delete-habit-btn');
 			currentHabitId = btn.dataset.habitId;
-			if (deleteModal) {
-				deleteModal.style.display = 'block';
-			}
+			showModal();
 		}
 	});
 
@@ -123,8 +151,7 @@ function initHabitDeletion() {
 	[cancelDeleteBtn, closeBtn].forEach(btn => {
 		if (btn) {
 			btn.addEventListener('click', () => {
-				deleteModal.style.display = 'none';
-				currentHabitId = null;
+				hideModal();
 			});
 		}
 	});
@@ -134,21 +161,24 @@ function initHabitDeletion() {
 		confirmDeleteBtn.addEventListener('click', () => {
 			if (currentHabitId) {
 				deleteHabit(currentHabitId);
-				deleteModal.style.display = 'none';
-				currentHabitId = null;
+				hideModal();
 			}
 		});
 	}
 
-	// Закриття при кліку поза модальним вікном
-	if (deleteModal) {
-		deleteModal.addEventListener('click', (e) => {
-			if (e.target === deleteModal) {
-				deleteModal.style.display = 'none';
-				currentHabitId = null;
-			}
+	// Закриття при кліку на overlay
+	if (modalOverlay) {
+		modalOverlay.addEventListener('click', () => {
+			hideModal();
 		});
 	}
+
+	// Закриття при натисканні Escape
+	document.addEventListener('keydown', (e) => {
+		if (e.key === 'Escape' && deleteModal && deleteModal.classList.contains('show')) {
+			hideModal();
+		}
+	});
 }
 
 /**
@@ -165,20 +195,18 @@ function deleteHabit(habitId) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			if (data.status === 'success') {
-				showMessage('Habit deleted successfully!', 'success');
-				// Удаляем карточку из DOM
-				const habitCard = document.querySelector(`[data-habit-id="${habitId}"]`);
-				if (habitCard) {
-					habitCard.remove();
-				}
+			if (data.status === 'success' || data.status === 'ok') {
+				showNotification('Habit deleted successfully!', 'success');
+
+				// Обновляем список привычек без перезагрузки
+				refreshHabitsListAndStats();
 			} else {
-				showMessage(data.message || 'Failed to delete habit', 'error');
+				showNotification(data.message || 'Failed to delete habit', 'error');
 			}
 		})
 		.catch(error => {
 			console.error('Error:', error);
-			showMessage('An error occurred while deleting habit', 'error');
+			showNotification('An error occurred while deleting habit', 'error');
 		});
 }
 
@@ -215,7 +243,7 @@ function toggleHabitActive(habitId, active) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			if (data.status === 'success') {
+			if (data.status === 'success' || data.status === 'ok') {
 				const habitCard = document.querySelector(`[data-habit-id="${habitId}"]`);
 				const toggleBtn = habitCard.querySelector('.toggle-habit-btn');
 				const checkinBtn = habitCard.querySelector('.btn-checkin');
@@ -226,21 +254,21 @@ function toggleHabitActive(habitId, active) {
 					icon.className = 'fas fa-pause';
 					toggleBtn.title = 'Deactivate Habit';
 					if (checkinBtn) checkinBtn.disabled = false;
-					showMessage('Habit activated!', 'success');
+					showNotification('Habit activated!', 'success');
 				} else {
 					habitCard.classList.add('inactive');
 					icon.className = 'fas fa-play';
 					toggleBtn.title = 'Activate Habit';
 					if (checkinBtn) checkinBtn.disabled = true;
-					showMessage('Habit deactivated!', 'info');
+					showNotification('Habit deactivated!', 'warning');
 				}
 			} else {
-				showMessage(data.message || 'Failed to toggle habit', 'error');
+				showNotification(data.message || 'Failed to toggle habit', 'error');
 			}
 		})
 		.catch(error => {
 			console.error('Error:', error);
-			showMessage('An error occurred', 'error');
+			showNotification('An error occurred', 'error');
 		});
 }
 
@@ -278,7 +306,7 @@ function toggleHabitCheckin(habitId, checked) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			if (data.status === 'success') {
+			if (data.status === 'success' || data.status === 'ok') {
 				const btn = document.querySelector(`[data-habit-id="${habitId}"] .btn-checkin`);
 				const icon = btn.querySelector('i');
 
@@ -286,23 +314,23 @@ function toggleHabitCheckin(habitId, checked) {
 					btn.classList.add('checked');
 					icon.className = 'fas fa-check-circle';
 					btn.innerHTML = '<i class="fas fa-check-circle"></i>Completed';
-					showMessage('Great job! Habit completed for today!', 'success');
+					showNotification('Great job! Habit completed for today!', 'success');
 				} else {
 					btn.classList.remove('checked');
 					icon.className = 'fas fa-circle';
 					btn.innerHTML = '<i class="fas fa-circle"></i>Mark as Done';
-					showMessage('Habit unchecked', 'info');
+					showNotification('Habit unchecked', 'warning');
 				}
 
-				// Обновляем статистику (можно добавить AJAX запрос для получения новых данных)
+				// Обновляем статистику
 				updateHabitStats(habitId, data.stats);
 			} else {
-				showMessage(data.message || 'Failed to update habit', 'error');
+				showNotification(data.message || 'Failed to update habit', 'error');
 			}
 		})
 		.catch(error => {
 			console.error('Error:', error);
-			showMessage('An error occurred', 'error');
+			showNotification('An error occurred', 'error');
 		});
 }
 
@@ -316,9 +344,153 @@ function updateHabitStats(habitId, stats) {
 		if (statItems.length >= 3) {
 			statItems[0].textContent = stats.current_streak || 0;
 			statItems[1].textContent = stats.longest_streak || 0;
-			statItems[2].textContent = stats.completion_rate || 0;
+			statItems[2].textContent = (stats.completion_rate || 0) + '%';
 		}
+
+		// Также обновляем общую статистику на странице
+		updatePageStats();
 	}
+}
+
+/**
+ * Обновляет общую статистику на странице
+ */
+function updatePageStats() {
+	fetch('/api/get-habits-stats/')
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success' || data.status === 'ok') {
+				const stats = data.stats;
+				const statCards = document.querySelectorAll('.habits-stats .stat-card .stat-number');
+
+				if (statCards.length >= 4) {
+					statCards[0].textContent = stats.total_habits || 0;
+					statCards[1].textContent = stats.active_habits || 0;
+					statCards[2].textContent = stats.completed_today || 0;
+					statCards[3].textContent = stats.current_streak || 0;
+				}
+			}
+		})
+		.catch(error => {
+			console.error('Error updating page stats:', error);
+		});
+}
+
+/**
+ * Обновляет список привычек и статистику без перезагрузки страницы
+ */
+function refreshHabitsListAndStats() {
+	// Обновляем статистику
+	updatePageStats();
+
+	// Получаем обновленный список привычек
+	fetch('/api/get-user-habits/')
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success' || data.status === 'ok') {
+				const habitsContainer = document.querySelector('.habits-list');
+				const emptyState = document.querySelector('.empty-state');
+
+				if (data.habits && data.habits.length > 0) {
+					// Скрываем empty state если есть привычки
+					if (emptyState) {
+						emptyState.style.display = 'none';
+					}
+
+					// Показываем контейнер привычек
+					if (habitsContainer) {
+						habitsContainer.style.display = 'grid';
+
+						// Обновляем HTML содержимое
+						habitsContainer.innerHTML = generateHabitsHTML(data.habits);
+
+						// Переинициализируем обработчики для новых элементов
+						reinitializeHabitHandlers();
+					}
+				} else {
+					// Показываем empty state если нет привычек
+					if (emptyState) {
+						emptyState.style.display = 'flex';
+					}
+					if (habitsContainer) {
+						habitsContainer.style.display = 'none';
+					}
+				}
+			}
+		})
+		.catch(error => {
+			console.error('Error refreshing habits list:', error);
+			// В случае ошибки просто перезагружаем страницу
+			setTimeout(() => {
+				window.location.reload();
+			}, 500);
+		});
+}
+
+/**
+ * Генерирует HTML для списка привычек
+ */
+function generateHabitsHTML(habits) {
+	return habits.map(habit => `
+		<div class="habit-card ${habit.active ? '' : 'inactive'}" data-habit-id="${habit.id}">
+			<div class="habit-header">
+				<div class="habit-info">
+					<h3>${habit.name}</h3>
+					<div class="habit-frequency">${habit.frequency_display}</div>
+				</div>
+				<div class="habit-actions">
+					<button class="btn-icon toggle-habit-btn" data-habit-id="${habit.id}" title="${habit.active ? 'Deactivate' : 'Activate'} Habit">
+						<i class="fas ${habit.active ? 'fa-pause' : 'fa-play'}"></i>
+					</button>
+					<button class="btn-icon delete-habit-btn" data-habit-id="${habit.id}" title="Delete Habit">
+						<i class="fas fa-trash"></i>
+					</button>
+				</div>
+			</div>
+			
+			${habit.description ? `<p class="habit-description">${habit.description}</p>` : ''}
+
+			<div class="habit-checkin-section">
+				<div class="checkin-header">
+					<span>Today's Progress</span>
+					<span class="checkin-date">${habit.today_date}</span>
+				</div>
+				<div class="checkin-controls">
+					<button class="btn-checkin ${habit.is_checked_today ? 'checked' : ''}" 
+							data-habit-id="${habit.id}"
+							${!habit.active ? 'disabled' : ''}>
+						<i class="fas${habit.is_checked_today ? ' fa-check-circle' : ' fa-circle'}"></i>
+						${habit.is_checked_today ? 'Completed' : 'Mark as Done'}
+					</button>
+				</div>
+			</div>
+
+			<div class="habit-stats">
+				<div class="stat-item">
+					<div class="stat-value">${habit.current_streak}</div>
+					<div class="stat-label">Current Streak</div>
+				</div>
+				<div class="stat-item">
+					<div class="stat-value">${habit.longest_streak}</div>
+					<div class="stat-label">Best Streak</div>
+				</div>
+				<div class="stat-item">
+					<div class="stat-value">${habit.completion_rate}%</div>
+					<div class="stat-label">Success Rate</div>
+				</div>
+			</div>
+		</div>
+	`).join('');
+}
+
+/**
+ * Переинициализирует обработчики событий для новых элементов привычек
+ */
+function reinitializeHabitHandlers() {
+	// Переинициализируем обработчики, которые могли быть потеряны
+	// Обработчики уже инициализированы глобально через document.addEventListener,
+	// поэтому они должны работать автоматически для новых элементов
+	console.log('🔄 Habit handlers reinitialized for new elements');
 }
 
 /**
@@ -348,20 +520,97 @@ function useHabitTemplate(templateId) {
 	})
 		.then(response => response.json())
 		.then(data => {
-			if (data.status === 'success') {
-				showMessage('Habit created from template!', 'success');
-				// Перезагружаем страницу для обновления списка
-				setTimeout(() => {
-					window.location.reload();
-				}, 1000);
+			console.log('Template response:', data); // Отладка
+			if (data.status === 'success' || data.status === 'ok') {
+				console.log('Showing success notification'); // Отладка
+				showNotification('Habit created from template!', 'success');
+
+				// Обновляем список привычек без перезагрузки
+				refreshHabitsListAndStats();
 			} else {
-				showMessage(data.message || 'Failed to use template', 'error');
+				console.log('Showing error notification'); // Отладка
+				showNotification(data.message || 'Failed to use template', 'error');
 			}
 		})
 		.catch(error => {
 			console.error('Error:', error);
-			showMessage('An error occurred while using template', 'error');
+			showNotification('An error occurred while using template', 'error');
 		});
+}
+
+/**
+ * Показ повідомлень з правильними кольорами
+ */
+function showNotification(message, type = 'info') {
+	console.log('showNotification called:', message, type); // Отладка
+
+	// Удаляем существующие уведомления
+	const existingNotifications = document.querySelectorAll('.habit-notification');
+	existingNotifications.forEach(notif => notif.remove());
+
+	// Створюємо елемент повідомлення
+	const notification = document.createElement('div');
+	notification.className = `habit-notification notification-${type}`;
+	notification.textContent = message;
+
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
+
+	notification.style.cssText = `
+		position: fixed;
+		top: 20px;
+		right: 20px;
+		${styles}
+		padding: 15px 20px;
+		border-radius: 8px;
+		z-index: 1001;
+		opacity: 0;
+		transform: translateX(100%);
+		transition: all 0.3s ease;
+		max-width: 300px;
+		box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+		font-weight: 500;
+	`; document.body.appendChild(notification);
+
+	// Анімація появлення
+	setTimeout(() => {
+		notification.style.opacity = '1';
+		notification.style.transform = 'translateX(0)';
+	}, 100);
+
+	// Видалення через 3 секунди
+	setTimeout(() => {
+		notification.style.opacity = '0';
+		notification.style.transform = 'translateX(100%)';
+		setTimeout(() => {
+			if (notification.parentNode) {
+				notification.parentNode.removeChild(notification);
+			}
+		}, 300);
+	}, 3000);
 }
 
 // Ініціалізація при завантаженні DOM

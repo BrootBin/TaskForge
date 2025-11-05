@@ -104,7 +104,8 @@ if (!isGoalsPage) {
 							}
 						}						// Показываем уведомление
 						const message = data.completed ? 'Subgoal completed!' : 'Subgoal unchecked';
-						showGoalsNotification(message, 'success');
+						const notificationType = data.completed ? 'success' : 'warning';
+						showGoalsNotification(message, notificationType);
 
 					} else {
 						throw new Error(data.message || "Error updating subgoal");
@@ -220,25 +221,43 @@ function createGoalsCustomNotification(message, type = 'info') {
 	const notification = document.createElement('div');
 	notification.className = 'goals-custom-notification';
 
-	const bgColors = {
-		success: 'linear-gradient(135deg, #4CAF50, #45a049)',
-		error: 'linear-gradient(135deg, #f44336, #da190b)',
-		info: 'linear-gradient(135deg, #2196F3, #0b7dda)',
-		warning: 'linear-gradient(135deg, #ff9800, #e68900)'
-	};
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
 
 	notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${bgColors[type] || bgColors.info};
-        color: white;
-        padding: 12px 18px;
-        border-radius: 6px;
+        ${styles}
+        padding: 15px 20px;
+        border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         z-index: 9999;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 14px;
         max-width: 300px;
         opacity: 0;
         transform: translateX(100%);

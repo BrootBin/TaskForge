@@ -148,6 +148,81 @@ def habits_page(request):
         'today': today,
     })
 
+
+@login_required
+@require_http_methods(["GET"])
+def get_habits_stats(request):
+    """API для получения обновленной статистики привычек"""
+    try:
+        from .models import Habit
+        from django.utils import timezone
+        
+        user_habits = Habit.objects.filter(user=request.user)
+        
+        # Статистика привычек
+        total_habits = user_habits.count()
+        active_habits = user_habits.filter(active=True).count()
+        
+        # Привычки, отмеченные сегодня
+        today = timezone.now().date()
+        completed_today = 0
+        current_streak = 0
+        
+        for habit in user_habits.filter(active=True):
+            if habit.is_checked_today():
+                completed_today += 1
+            current_streak = max(current_streak, habit.current_streak)
+        
+        stats = {
+            'total_habits': total_habits,
+            'active_habits': active_habits,
+            'completed_today': completed_today,
+            'current_streak': current_streak
+        }
+        
+        return JsonResponse({
+            "status": "success",
+            "stats": stats
+        })
+        
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_user_habits(request):
+    """API для получения списка привычек пользователя"""
+    try:
+        from .models import Habit
+        from django.utils import timezone
+        
+        user_habits = Habit.objects.filter(user=request.user).order_by('-created_at')
+        today = timezone.now().date()
+        
+        habits_data = []
+        for habit in user_habits:
+            habits_data.append({
+                'id': habit.id,
+                'name': habit.name,
+                'description': habit.description,
+                'frequency_display': habit.get_frequency_display(),
+                'active': habit.active,
+                'is_checked_today': habit.is_checked_today(),
+                'current_streak': habit.current_streak,
+                'longest_streak': habit.longest_streak,
+                'completion_rate': habit.completion_rate,
+                'today_date': today.strftime("%B %d")
+            })
+        
+        return JsonResponse({
+            "status": "success",
+            "habits": habits_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
 def register_view(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -636,7 +711,7 @@ def use_habit_template(request):
         new_habit.save()
         
         return JsonResponse({
-            "status": "ok",
+            "status": "success",
             "habit_id": new_habit.id,
             "message": f"Habit '{template.name}' successfully added"
         })
@@ -1059,6 +1134,7 @@ def toggle_habit_active(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
+@csrf_exempt
 @require_POST
 def habit_checkin(request):
     """API для чекіну звички"""
@@ -1072,6 +1148,7 @@ def habit_checkin(request):
         data = json.loads(request.body)
         habit_id = data.get('habit_id')
         checkin_date = data.get('date')
+        checked = data.get('checked')  # Добавляем поддержку параметра checked
         
         if not habit_id:
             return JsonResponse({"status": "error", "message": "Habit ID is required"}, status=400)
@@ -1085,20 +1162,51 @@ def habit_checkin(request):
         
         habit = Habit.objects.get(id=habit_id, user=request.user)
         
-        # Перевіряємо, чи існує чекін на цю дату
-        checkin, created = HabitCheckin.objects.get_or_create(
+        # Ищем существующий чекин
+        checkin = HabitCheckin.objects.filter(
             habit=habit,
-            date=checkin_date,
-            defaults={'completed': True}
-        )
+            date=checkin_date
+        ).first()
         
-        if not created:
-            # Якщо чекін вже існує, перемикаємо статус
-            checkin.completed = not checkin.completed
-            checkin.save()
+        # Определяем желаемое состояние
+        if checked is not None:
+            target_completed = checked
+        else:
+            # Если не передан параметр checked, переключаем
+            target_completed = not (checkin.completed if checkin else False)
+        
+        if target_completed:
+            # Нужно отметить как выполнено
+            if not checkin:
+                # Создаем новый чекин
+                checkin = HabitCheckin.objects.create(
+                    habit=habit,
+                    date=checkin_date,
+                    completed=True
+                )
+            else:
+                # Обновляем существующий
+                checkin.completed = True
+                checkin.save()
+        else:
+            # Нужно снять отметку
+            if checkin:
+                # Если чекин существует, обновляем
+                checkin.completed = False
+                checkin.save()
+            else:
+                # Если чекина нет, создаем с completed=False для консистентности
+                checkin = HabitCheckin.objects.create(
+                    habit=habit,
+                    date=checkin_date,
+                    completed=False
+                )
+        
+        # Получаем финальное состояние чекина
+        final_completed = checkin.completed if checkin else False
         
         # Оновлюємо streak_days та last_checkin
-        if checkin.completed:
+        if final_completed:
             # Перевіряємо чи це послідовний день
             if habit.last_checkin:
                 days_diff = (checkin_date - habit.last_checkin).days
@@ -1149,13 +1257,41 @@ def habit_checkin(request):
         cache_key = f'habits_history_{request.user.id}'
         cache.delete(cache_key)
         
-        message = f"Habit '{habit.name}' marked as {'completed' if checkin.completed else 'not completed'} for {checkin_date}"
+        # Рассчитываем статистику привычки
+        from datetime import datetime, timedelta
+        total_days = (datetime.now().date() - habit.created_at.date()).days + 1
+        completed_checkins = HabitCheckin.objects.filter(habit=habit, completed=True).count()
+        completion_rate = round((completed_checkins / total_days) * 100) if total_days > 0 else 0
+        
+        # Находим самый длинный streak
+        longest_streak = 0
+        current_streak = 0
+        check_date = habit.created_at.date()
+        end_date = datetime.now().date()
+        
+        while check_date <= end_date:
+            checkin = HabitCheckin.objects.filter(habit=habit, date=check_date, completed=True).first()
+            if checkin:
+                current_streak += 1
+                longest_streak = max(longest_streak, current_streak)
+            else:
+                current_streak = 0
+            check_date += timedelta(days=1)
+        
+        stats = {
+            'current_streak': habit.streak_days,
+            'longest_streak': longest_streak,
+            'completion_rate': completion_rate
+        }
+        
+        message = f"Habit '{habit.name}' marked as {'completed' if final_completed else 'not completed'} for {checkin_date}"
         
         return JsonResponse({
             "status": "success",
             "message": message,
-            "completed": checkin.completed,
-            "streak_days": habit.streak_days
+            "completed": final_completed,
+            "streak_days": habit.streak_days,
+            "stats": stats
         })
         
     except Habit.DoesNotExist:

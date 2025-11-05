@@ -296,27 +296,66 @@ window.testAuthModal = function () {
 function showMessage(message, type = 'info', duration = 3000) {
 	console.log(`${type.toUpperCase()}: ${message}`);
 
+	// Удаляем существующие уведомления
+	const existingNotifications = document.querySelectorAll('.base-modal-notification');
+	existingNotifications.forEach(notif => notif.remove());
+
 	// Создаем элемент уведомления
 	const notification = document.createElement('div');
-	notification.className = `notification notification-${type}`;
+	notification.className = `base-modal-notification notification-${type}`;
+
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
+
 	notification.style.cssText = `
 		position: fixed;
 		top: 20px;
 		right: 20px;
+		${styles}
 		padding: 15px 20px;
-		background: ${getNotificationColor(type)};
-		color: white;
 		border-radius: 8px;
 		z-index: 10000;
-		box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-		font-weight: 500;
+		opacity: 0;
+		transform: translateX(100%);
+		transition: all 0.3s ease;
 		max-width: 400px;
+		box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+		font-weight: 500;
 		word-wrap: break-word;
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 	`;
 	notification.textContent = message;
 
 	document.body.appendChild(notification);
+
+	// Анимация появления
+	setTimeout(() => {
+		notification.style.opacity = '1';
+		notification.style.transform = 'translateX(0)';
+	}, 100);
 
 	// Автоматическое удаление
 	setTimeout(() => {

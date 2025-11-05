@@ -125,35 +125,65 @@ function getCSRFToken() {
 }
 
 function showMessage(message, type = 'info') {
-	// Перевіряємо, чи існує контейнер для повідомлень
-	let messageContainer = document.getElementById('message-container');
-
-	if (!messageContainer) {
-		// Створюємо контейнер, якщо його немає
-		messageContainer = document.createElement('div');
-		messageContainer.id = 'message-container';
-		messageContainer.style.position = 'fixed';
-		messageContainer.style.top = '20px';
-		messageContainer.style.right = '20px';
-		messageContainer.style.zIndex = '9999';
-		document.body.appendChild(messageContainer);
-	}
+	// Удаляем существующие уведомления
+	const existingNotifications = document.querySelectorAll('.templates-notification');
+	existingNotifications.forEach(notif => notif.remove());
 
 	// Створюємо елемент повідомлення
 	const messageElement = document.createElement('div');
-	messageElement.className = `message ${type}`;
+	messageElement.className = `templates-notification message-${type}`;
 	messageElement.textContent = message;
 
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
+
 	// Стилізація повідомлення
-	messageElement.style.backgroundColor = type === 'error' ? 'rgba(220, 53, 69, 0.9)' :
-		type === 'success' ? 'rgba(40, 167, 69, 0.9)' :
-			'rgba(212, 175, 55, 0.9)';
-	messageElement.style.color = '#fff';
-	messageElement.style.padding = '10px 15px';
-	messageElement.style.borderRadius = '5px';
-	messageElement.style.marginBottom = '10px';
-	messageElement.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-	messageElement.style.transition = 'opacity 0.5s ease-in-out';
+	messageElement.style.cssText = `
+		position: fixed;
+		top: 20px;
+		right: 20px;
+		${styles}
+		padding: 15px 20px;
+		border-radius: 8px;
+		z-index: 9999;
+		opacity: 0;
+		transform: translateX(100%);
+		transition: all 0.3s ease;
+		max-width: 350px;
+		box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+		font-weight: 500;
+	`;
+
+	document.body.appendChild(messageElement);
+
+	// Анимация появления
+	setTimeout(() => {
+		messageElement.style.opacity = '1';
+		messageElement.style.transform = 'translateX(0)';
+	}, 100);
 
 	// Додаємо повідомлення в контейнер
 	messageContainer.appendChild(messageElement);

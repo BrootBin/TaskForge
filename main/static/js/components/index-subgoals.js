@@ -36,47 +36,444 @@ function cancelAutoReplace(subgoalId) {
 	}
 }
 
-// Функция для перемещения выполненных подцелей вниз списка
+// Функция для возвращения подцели в видимую область (когда снимается отметка выполнения)
+function moveSubgoalBackToVisible(subgoalElement, goalCard) {
+	if (!subgoalElement || !goalCard) return;
+
+	console.log('↩️ [INDEX] Возвращение подцели в видимую область');
+
+	const isGoalExpanded = goalCard.classList.contains('goal-expanded');
+
+	// Если цель раскрыта, просто показываем элемент
+	if (isGoalExpanded) {
+		if (subgoalElement.classList.contains('hidden-subgoal')) {
+			subgoalElement.classList.remove('hidden-subgoal');
+			subgoalElement.style.display = 'flex';
+		}
+		return;
+	}
+
+	// Если цель не раскрыта, нужно проверить, поместится ли подцель в первые 3
+	const subgoalsContainer = goalCard.querySelector('.subgoals-list');
+	if (!subgoalsContainer) return;
+
+	const allSubgoals = Array.from(subgoalsContainer.querySelectorAll('.subgoal-item:not(.more-subgoals-indicator)'));
+	const incompleteSubgoals = allSubgoals.filter(subgoal => {
+		const checkbox = subgoal.querySelector('.subgoal-checkbox');
+		return checkbox && checkbox.dataset.completed !== 'true';
+	});
+
+	// Если после возвращения будет <= 3 невыполненных подцелей, показываем элемент
+	if (incompleteSubgoals.length <= 3) {
+		subgoalElement.classList.remove('hidden-subgoal');
+
+		// Анимация появления
+		subgoalElement.style.opacity = '0';
+		subgoalElement.style.transform = 'translateY(-10px)';
+		subgoalElement.style.display = 'flex';
+
+		requestAnimationFrame(() => {
+			subgoalElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+			subgoalElement.style.opacity = '1';
+			subgoalElement.style.transform = 'translateY(0)';
+
+			setTimeout(() => {
+				subgoalElement.style.transition = '';
+				subgoalElement.style.transform = '';
+			}, 300);
+		});
+
+		// Обновляем индикатор "more"
+		const moreIndicator = goalCard.querySelector('.more-subgoals-indicator');
+		if (moreIndicator) {
+			const hiddenSubgoals = allSubgoals.filter(subgoal => subgoal.classList.contains('hidden-subgoal'));
+			const moreText = moreIndicator.querySelector('.more-text');
+
+			if (hiddenSubgoals.length > 0) {
+				if (moreText) {
+					moreText.textContent = `+${hiddenSubgoals.length} more`;
+				}
+				moreIndicator.style.display = 'flex';
+			} else {
+				moreIndicator.style.display = 'none';
+			}
+		}
+
+		console.log('✅ [INDEX] Подцель возвращена в видимую область');
+	}
+}
+
+// Функция для перемещения выполненных подцелей вниз списка (с учетом скрытых подцелей)
 async function moveCompletedSubgoalToBottom(completedSubgoalElement, goalCard) {
 	if (!completedSubgoalElement || !goalCard) return;
 
 	const subgoalsContainer = goalCard.querySelector('.subgoals-list');
 	if (!subgoalsContainer) return;
 
-	console.log('🔄 [INDEX] Перемещение выполненной подцели вниз списка');
+	console.log('🔄 [INDEX] Перемещение выполненной подцели с учетом скрытых элементов');
 
 	// Получаем все подцели, исключая индикаторы "more"
 	const allSubgoals = Array.from(subgoalsContainer.querySelectorAll('.subgoal-item:not(.more-subgoals-indicator)'));
 	const moreIndicator = subgoalsContainer.querySelector('.more-subgoals-indicator');
+	const isGoalExpanded = goalCard.classList.contains('goal-expanded');
 
-	// Анимация перемещения
-	completedSubgoalElement.style.transition = 'all 0.5s ease';
-	completedSubgoalElement.style.transform = 'translateY(10px)';
-	completedSubgoalElement.style.opacity = '0.8';
+	// Определяем, нужно ли скрывать подцель
+	let shouldHideSubgoal = false;
 
-	setTimeout(() => {
-		// Перемещаем выполненную подцель в конец списка (перед индикатором "more")
+	if (!isGoalExpanded) {
+		// Если цель не раскрыта, считаем видимые подцели (без hidden-subgoal)
+		const visibleSubgoals = allSubgoals.filter(subgoal => !subgoal.classList.contains('hidden-subgoal'));
+		const visibleIndex = visibleSubgoals.indexOf(completedSubgoalElement);
+
+		// Если выполненная подцель будет после 3-й позиции в общем списке, скрываем её
+		const completedSubgoals = allSubgoals.filter(subgoal => {
+			const checkbox = subgoal.querySelector('.subgoal-checkbox');
+			return checkbox && checkbox.dataset.completed === 'true';
+		});
+
+		// Определяем финальную позицию после сортировки
+		const incompleteSubgoals = allSubgoals.filter(subgoal => {
+			const checkbox = subgoal.querySelector('.subgoal-checkbox');
+			return checkbox && checkbox.dataset.completed !== 'true' && subgoal !== completedSubgoalElement;
+		});
+
+		const finalPosition = incompleteSubgoals.length; // Позиция среди всех после сортировки
+		shouldHideSubgoal = finalPosition >= 3; // Скрываем если позиция >= 3 (4-я, 5-я и т.д.)
+	}
+
+	// Сохраняем исходную позицию для анимации
+	const originalRect = completedSubgoalElement.getBoundingClientRect();
+
+	// Временно клонируем элемент для плавной анимации
+	const placeholder = completedSubgoalElement.cloneNode(true);
+	placeholder.style.opacity = '0.3';
+	placeholder.style.pointerEvents = 'none';
+	completedSubgoalElement.parentNode.insertBefore(placeholder, completedSubgoalElement);
+
+	// Перемещаем элемент в конечную позицию без анимации
+	if (moreIndicator) {
+		subgoalsContainer.insertBefore(completedSubgoalElement, moreIndicator);
+	} else {
+		subgoalsContainer.appendChild(completedSubgoalElement);
+	}
+
+	// Если нужно скрыть подцель, делаем это сразу после перемещения
+	if (shouldHideSubgoal) {
+		completedSubgoalElement.classList.add('hidden-subgoal');
+
+		// Обновляем индикатор "more" если есть скрытые подцели
 		if (moreIndicator) {
-			subgoalsContainer.insertBefore(completedSubgoalElement, moreIndicator);
+			const hiddenCount = allSubgoals.filter(subgoal => subgoal.classList.contains('hidden-subgoal')).length + 1; // +1 за текущую
+			const moreText = moreIndicator.querySelector('.more-text');
+			if (moreText) {
+				moreText.textContent = `+${hiddenCount} more`;
+			}
+			moreIndicator.style.display = 'flex';
+		}
+	}
+
+	// Получаем новую позицию (для анимации)
+	let newRect;
+	if (shouldHideSubgoal) {
+		// Если элемент скрывается, анимируем к позиции индикатора "more"
+		newRect = moreIndicator ? moreIndicator.getBoundingClientRect() : originalRect;
+	} else {
+		newRect = completedSubgoalElement.getBoundingClientRect();
+	}
+
+	const deltaY = originalRect.top - newRect.top;
+
+	// Устанавливаем элемент в исходную позицию для анимации
+	completedSubgoalElement.style.transform = `translateY(${deltaY}px)`;
+	completedSubgoalElement.style.transition = 'none';
+
+	// Если элемент скрывается, начинаем с полной непрозрачности
+	if (!shouldHideSubgoal) {
+		completedSubgoalElement.style.opacity = '1';
+	}
+
+	// Запускаем анимацию плавного перемещения
+	requestAnimationFrame(() => {
+		if (shouldHideSubgoal) {
+			// Анимация скрытия: уменьшаем прозрачность и перемещаем
+			completedSubgoalElement.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease';
+			completedSubgoalElement.style.transform = 'translateY(0)';
+			completedSubgoalElement.style.opacity = '0';
+
+			setTimeout(() => {
+				// Полностью скрываем элемент
+				completedSubgoalElement.style.display = 'none';
+				completedSubgoalElement.style.transform = '';
+				completedSubgoalElement.style.transition = '';
+			}, 600);
 		} else {
-			subgoalsContainer.appendChild(completedSubgoalElement);
+			// Обычная анимация перемещения
+			completedSubgoalElement.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease';
+			completedSubgoalElement.style.transform = 'translateY(0)';
+			completedSubgoalElement.style.opacity = '0.8';
+
+			// Возвращаем полную непрозрачность в конце анимации
+			setTimeout(() => {
+				completedSubgoalElement.style.opacity = '';
+				completedSubgoalElement.style.transform = '';
+				completedSubgoalElement.style.transition = '';
+			}, 600);
 		}
 
-		// Возвращаем элемент в исходное состояние
-		completedSubgoalElement.style.transform = '';
-		completedSubgoalElement.style.opacity = '';
-
-		// Убираем переходы
+		// Убираем placeholder
 		setTimeout(() => {
-			completedSubgoalElement.style.transition = '';
-		}, 50);
+			if (placeholder.parentNode) {
+				placeholder.remove();
+			}
+		}, 100);
+	});
 
-		// Обновляем прогресс
+	if (shouldHideSubgoal) {
+		console.log('✅ [INDEX] Выполненная подцель перемещена в скрытую область');
+	} else {
+		console.log('✅ [INDEX] Выполненная подцель перемещена вниз видимого списка');
+	}
+}
+
+// Функция для сортировки подцелей в карточке цели с анимацией (невыполненные сверху, выполненные снизу)
+function sortSubgoalsInGoalCard(goalCard, animated = true) {
+	if (!goalCard) return;
+
+	const subgoalsContainer = goalCard.querySelector('.subgoals-list');
+	if (!subgoalsContainer) return;
+
+	// Получаем все подцели, исключая индикаторы
+	const allSubgoals = Array.from(subgoalsContainer.querySelectorAll('.subgoal-item:not(.more-subgoals-indicator)'));
+	const moreIndicator = subgoalsContainer.querySelector('.more-subgoals-indicator');
+	const isGoalExpanded = goalCard.classList.contains('goal-expanded');
+
+	if (allSubgoals.length === 0) return;
+
+	// Если анимация отключена или подцелей <= 1, выполняем быструю сортировку
+	if (!animated || allSubgoals.length <= 1) {
+		sortSubgoalsInGoalCardQuick(goalCard);
+		return;
+	}
+
+	// Сохраняем исходные позиции для анимации
+	const originalPositions = new Map();
+	allSubgoals.forEach(subgoal => {
+		const rect = subgoal.getBoundingClientRect();
+		originalPositions.set(subgoal, {
+			top: rect.top,
+			left: rect.left
+		});
+	});
+
+	// Сортируем: невыполненные подцели сверху, выполненные снизу
+	const sortedSubgoals = [...allSubgoals].sort((a, b) => {
+		const aCompleted = (a.querySelector('.subgoal-checkbox')?.dataset.completed || '').toLowerCase() === 'true';
+		const bCompleted = (b.querySelector('.subgoal-checkbox')?.dataset.completed || '').toLowerCase() === 'true';
+
+		// Невыполненные (false) должны быть первыми
+		if (aCompleted !== bCompleted) {
+			return aCompleted - bCompleted;
+		}
+
+		// Если статус одинаковый, сохраняем исходный порядок
+		return 0;
+	});
+
+	// Проверяем, нужна ли анимация (изменился ли порядок)
+	const needsAnimation = !allSubgoals.every((subgoal, index) => subgoal === sortedSubgoals[index]);
+
+	if (!needsAnimation) {
+		// Если порядок не изменился, выполняем только управление видимостью
+		managSubgoalsVisibility(goalCard, sortedSubgoals, isGoalExpanded, moreIndicator);
+		return;
+	}
+
+	// Перестраиваем DOM в отсортированном порядке
+	sortedSubgoals.forEach((subgoal, index) => {
+		if (moreIndicator) {
+			subgoalsContainer.insertBefore(subgoal, moreIndicator);
+		} else {
+			subgoalsContainer.appendChild(subgoal);
+		}
+	});
+
+	// Получаем новые позиции после перестановки
+	const newPositions = new Map();
+	sortedSubgoals.forEach(subgoal => {
+		const rect = subgoal.getBoundingClientRect();
+		newPositions.set(subgoal, {
+			top: rect.top,
+			left: rect.left
+		});
+	});
+
+	// Применяем анимацию FLIP (First, Last, Invert, Play)
+	sortedSubgoals.forEach(subgoal => {
+		const originalPos = originalPositions.get(subgoal);
+		const newPos = newPositions.get(subgoal);
+
+		if (!originalPos || !newPos) return;
+
+		const deltaY = originalPos.top - newPos.top;
+		const deltaX = originalPos.left - newPos.left;
+
+		// Если элемент не сдвинулся, не анимируем
+		if (Math.abs(deltaY) < 2 && Math.abs(deltaX) < 2) return;
+
+		// Устанавливаем элемент в исходную позицию
+		subgoal.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+		subgoal.style.transition = 'none';
+
+		// Запускаем анимацию к новой позиции
+		requestAnimationFrame(() => {
+			subgoal.style.transition = 'transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)';
+			subgoal.style.transform = 'translate(0, 0)';
+
+			// Очищаем стили после анимации
+			setTimeout(() => {
+				subgoal.style.transform = '';
+				subgoal.style.transition = '';
+			}, 400);
+		});
+	});
+
+	// Управляем видимостью с небольшой задержкой для завершения анимации
+	setTimeout(() => {
+		console.log('🔄 [INDEX] Управляем видимостью подцелей после анимации');
+		managSubgoalsVisibility(goalCard, sortedSubgoals, isGoalExpanded, moreIndicator);
+		// ВАЖНО: Обновляем прогресс ПОСЛЕ управления видимостью
+		console.log('📊 [INDEX] Обновляем прогресс после управления видимостью');
 		updateIndexGoalProgressLocal(goalCard);
+	}, 200);
 
-		console.log('✅ [INDEX] Выполненная подцель перемещена вниз списка');
+	console.log('🎬 [INDEX] Подцели отсортированы с анимацией: невыполненные сверху, выполненные снизу');
+}
 
-	}, 250);
+// Быстрая сортировка без анимации (для инициализации)
+function sortSubgoalsInGoalCardQuick(goalCard) {
+	if (!goalCard) return;
+
+	const subgoalsContainer = goalCard.querySelector('.subgoals-list');
+	if (!subgoalsContainer) return;
+
+	// Получаем все подцели, исключая индикаторы
+	const allSubgoals = Array.from(subgoalsContainer.querySelectorAll('.subgoal-item:not(.more-subgoals-indicator)'));
+	const moreIndicator = subgoalsContainer.querySelector('.more-subgoals-indicator');
+	const isGoalExpanded = goalCard.classList.contains('goal-expanded');
+
+	if (allSubgoals.length === 0) return;
+
+	// Сортируем: невыполненные подцели сверху, выполненные снизу
+	allSubgoals.sort((a, b) => {
+		const aCompleted = (a.querySelector('.subgoal-checkbox')?.dataset.completed || '').toLowerCase() === 'true';
+		const bCompleted = (b.querySelector('.subgoal-checkbox')?.dataset.completed || '').toLowerCase() === 'true';
+
+		// Невыполненные (false) должны быть первыми
+		if (aCompleted !== bCompleted) {
+			return aCompleted - bCompleted;
+		}
+
+		// Если статус одинаковый, сохраняем исходный порядок
+		return 0;
+	});
+
+	// Перестраиваем DOM в отсортированном порядке
+	allSubgoals.forEach((subgoal, index) => {
+		if (moreIndicator) {
+			subgoalsContainer.insertBefore(subgoal, moreIndicator);
+		} else {
+			subgoalsContainer.appendChild(subgoal);
+		}
+	});
+
+	// Управляем видимостью
+	managSubgoalsVisibility(goalCard, allSubgoals, isGoalExpanded, moreIndicator);
+
+	console.log('⚡ [INDEX] Быстрая сортировка подцелей завершена');
+}
+
+// Вспомогательная функция для управления видимостью подцелей с анимацией
+function managSubgoalsVisibility(goalCard, subgoals, isGoalExpanded, moreIndicator) {
+	// Управляем видимостью подцелей
+	subgoals.forEach((subgoal, index) => {
+		if (!isGoalExpanded) {
+			if (index >= 3) {
+				// Скрываем подцели после 3-й позиции с анимацией
+				if (!subgoal.classList.contains('hidden-subgoal')) {
+					subgoal.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+					subgoal.style.opacity = '0';
+					subgoal.style.transform = 'translateY(-10px)';
+
+					setTimeout(() => {
+						subgoal.classList.add('hidden-subgoal');
+						subgoal.style.display = 'none';
+						subgoal.style.transition = '';
+						subgoal.style.opacity = '';
+						subgoal.style.transform = '';
+					}, 300);
+				}
+			} else {
+				// Показываем первые 3 подцели с анимацией
+				if (subgoal.classList.contains('hidden-subgoal')) {
+					subgoal.classList.remove('hidden-subgoal');
+					subgoal.style.opacity = '0';
+					subgoal.style.transform = 'translateY(-10px)';
+					subgoal.style.display = 'flex';
+
+					requestAnimationFrame(() => {
+						subgoal.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+						subgoal.style.opacity = '1';
+						subgoal.style.transform = 'translateY(0)';
+
+						setTimeout(() => {
+							subgoal.style.transition = '';
+							subgoal.style.transform = '';
+						}, 300);
+					});
+				} else if (subgoal.style.display === 'none') {
+					// Просто показываем если элемент был скрыт
+					subgoal.style.display = 'flex';
+				}
+			}
+		}
+	});
+
+	// Обновляем индикатор "more" если цель не раскрыта
+	if (!isGoalExpanded && moreIndicator) {
+		const hiddenSubgoals = subgoals.filter((subgoal, index) => index >= 3);
+		const moreText = moreIndicator.querySelector('.more-text');
+
+		if (hiddenSubgoals.length > 0) {
+			if (moreText) {
+				moreText.textContent = `+${hiddenSubgoals.length} more`;
+			}
+			// Плавное появление индикатора
+			if (moreIndicator.style.display === 'none') {
+				moreIndicator.style.opacity = '0';
+				moreIndicator.style.display = 'flex';
+				requestAnimationFrame(() => {
+					moreIndicator.style.transition = 'opacity 0.2s ease';
+					moreIndicator.style.opacity = '1';
+					setTimeout(() => {
+						moreIndicator.style.transition = '';
+					}, 200);
+				});
+			} else {
+				moreIndicator.style.display = 'flex';
+			}
+		} else {
+			// Плавное скрытие индикатора
+			if (moreIndicator.style.display !== 'none') {
+				moreIndicator.style.transition = 'opacity 0.2s ease';
+				moreIndicator.style.opacity = '0';
+				setTimeout(() => {
+					moreIndicator.style.display = 'none';
+					moreIndicator.style.transition = '';
+					moreIndicator.style.opacity = '';
+				}, 200);
+			}
+		}
+	}
 }
 
 // Простая функция для принудительного применения стилей завершения на главной странице
@@ -150,8 +547,8 @@ function initIndexSubgoalHandlers() {
 	// Инициализируем прогресс для всех целей
 	allGoalCards.forEach(goalCard => {
 		updateIndexGoalProgressLocal(goalCard);
-		// Убираем сортировку при инициализации, так как используем автозамену
-		// sortSubgoalsInGoalCard(goalCard);
+		// Сортируем подцели при инициализации: невыполненные сверху, выполненные снизу (без анимации)
+		sortSubgoalsInGoalCard(goalCard, false);
 	});
 
 	// Добавляем обработчики кликов
@@ -223,6 +620,7 @@ function addIndexSubgoalClickHandler(checkbox) {
 		const subgoalId = this.dataset.subgoalId;
 		const subgoalElement = this.closest('.subgoal-item');
 		const nameElement = subgoalElement ? subgoalElement.querySelector('.subgoal-name') : null;
+		const goalCard = subgoalElement ? subgoalElement.closest('.goal-card') : null;
 
 		// Устанавливаем новое состояние
 		setCurrentState(newCompleted);
@@ -263,6 +661,22 @@ function addIndexSubgoalClickHandler(checkbox) {
 			setCurrentState(actualCompleted);
 			this.dataset.completed = actualCompleted.toString();
 
+			// Обновляем статус цели сразу на основе ответа API
+			if (data.goal_completed !== undefined) {
+				const goalStatus = goalCard.querySelector('.goal-status');
+				if (goalStatus) {
+					if (data.goal_completed) {
+						goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Completed';
+						goalStatus.classList.add('completed');
+						goalCard.classList.add('completed');
+					} else {
+						goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> In Progress';
+						goalStatus.classList.remove('completed');
+						goalCard.classList.remove('completed');
+					}
+				}
+			}
+
 			// Возвращаем анимацию в исходное состояние
 			setTimeout(() => {
 				if (subgoalElement) {
@@ -284,15 +698,12 @@ function addIndexSubgoalClickHandler(checkbox) {
 			}, 300);
 
 			// Обновляем прогресс цели
-			const goalCard = subgoalElement ? subgoalElement.closest('.goal-card') : null;
 			if (goalCard) {
 				console.log('🎯 [INDEX] Оновлюємо прогрес цілі');
-				updateIndexGoalProgressLocal(goalCard);
-
-				// Убираем сортировку, так как автозамена обеспечивает нужную логику
-				// setTimeout(() => {
-				//	 sortSubgoalsInGoalCard(goalCard);
-				// }, 400); // Небольшая задержка после анимации
+				// Сортируем подцели после изменения состояния с анимацией
+				setTimeout(() => {
+					sortSubgoalsInGoalCard(goalCard, true);
+				}, 400); // Небольшая задержка после анимации
 
 				// Получаем свежие данные с сервера
 				setTimeout(() => {
@@ -304,13 +715,15 @@ function addIndexSubgoalClickHandler(checkbox) {
 			const message = actualCompleted ?
 				'✅ Great! Subgoal completed!' :
 				'⏪ Subgoal marked as incomplete';
-			showIndexNotification(message, actualCompleted ? 'success' : 'info');
+			showIndexNotification(message, actualCompleted ? 'success' : 'warning');
 
 			// Планируем автоперемещение для выполненной подцели или отменяем для невыполненной
 			if (actualCompleted) {
 				scheduleAutoReplace(subgoalElement, goalCard);
 			} else {
 				cancelAutoReplace(subgoalId);
+				// Возвращаем подцель в видимую область если она была скрыта
+				moveSubgoalBackToVisible(subgoalElement, goalCard);
 			}
 
 		} catch (error) {
@@ -323,13 +736,18 @@ function addIndexSubgoalClickHandler(checkbox) {
 			// Отменяем автоперемещение в случае ошибки
 			cancelAutoReplace(subgoalId);
 
+			// Если возвращаем в невыполненное состояние, пытаемся вернуть в видимую область
+			if (!newCompleted) {
+				moveSubgoalBackToVisible(subgoalElement, goalCard);
+			}
+
 			if (subgoalElement) {
 				subgoalElement.style.transform = 'scale(1)';
 				subgoalElement.style.boxShadow = '';
 				subgoalElement.style.transition = '';
 			}
 
-			showIndexNotification('Помилка при оновленні підцілі: ' + error.message, 'error');
+			showIndexNotification('Error updating subgoal: ' + error.message, 'error');
 		} finally {
 			this.removeAttribute('data-processing');
 		}
@@ -375,25 +793,43 @@ function createIndexCustomNotification(message, type = 'info') {
 	const notification = document.createElement('div');
 	notification.className = 'index-custom-notification';
 
-	const bgColors = {
-		success: 'linear-gradient(135deg, #4CAF50, #45a049)',
-		error: 'linear-gradient(135deg, #f44336, #da190b)',
-		info: 'linear-gradient(135deg, #2196F3, #0b7dda)',
-		warning: 'linear-gradient(135deg, #ff9800, #e68900)'
-	};
+	// Новые стили с темным фоном и золотой окантовкой для успеха
+	let styles = '';
+	if (type === 'success') {
+		styles = `
+			background: linear-gradient(135deg, #2c3e50, #34495e);
+			border-left: 4px solid #FFD700;
+			color: #FFD700;
+		`;
+	} else if (type === 'error') {
+		styles = `
+			background: linear-gradient(135deg, #e74c3c, #c0392b);
+			color: white;
+		`;
+	} else if (type === 'warning') {
+		styles = `
+			background: linear-gradient(135deg, #fff3cd, #ffeeba);
+			color: #856404;
+			border-left: 4px solid #ffc107;
+		`;
+	} else {
+		styles = `
+			background: linear-gradient(135deg, #2196F3, #0b7dda);
+			color: white;
+		`;
+	}
 
 	notification.style.cssText = `
 		position: fixed;
 		top: 20px;
 		right: 20px;
-		background: ${bgColors[type] || bgColors.info};
-		color: white;
-		padding: 12px 18px;
-		border-radius: 6px;
+		${styles}
+		padding: 15px 20px;
+		border-radius: 8px;
 		box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 		z-index: 9999;
 		font-weight: 500;
-		font-size: 13px;
+		font-size: 14px;
 		max-width: 300px;
 		opacity: 0;
 		transform: translateX(100%);
@@ -426,6 +862,8 @@ function updateIndexGoalProgressLocal(goalCard) {
 	// Для главной страницы используем span-чекбоксы с data-completed
 	const checkboxes = goalCard.querySelectorAll('.subgoal-checkbox');
 	const totalSubgoals = checkboxes.length;
+
+	// Считаем только реально существующие подцели (не учитываем скрытые для подсчета прогресса)
 	const completedSubgoals = [...checkboxes].filter(cb => {
 		const completedValue = (cb.dataset.completed || '').trim().toLowerCase();
 		return completedValue === 'true';
@@ -434,6 +872,8 @@ function updateIndexGoalProgressLocal(goalCard) {
 	if (totalSubgoals === 0) return;
 
 	const progressPercent = Math.round((completedSubgoals / totalSubgoals) * 100);
+
+	console.log(`📊 [INDEX] Прогресс обновлен: ${completedSubgoals}/${totalSubgoals} = ${progressPercent}%`);
 
 	// Обновляем прогресс-бар для главной страницы (.progress)
 	const progressBar = goalCard.querySelector('.progress');
@@ -445,6 +885,22 @@ function updateIndexGoalProgressLocal(goalCard) {
 	const percentElement = goalCard.querySelector('.percent');
 	if (percentElement) {
 		percentElement.textContent = `${progressPercent}%`;
+	}
+
+	// Обновляем статус цели
+	const goalStatus = goalCard.querySelector('.goal-status');
+	const isCompleted = progressPercent === 100;
+
+	if (goalStatus) {
+		if (isCompleted) {
+			goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Completed';
+			goalStatus.classList.add('completed');
+			goalCard.classList.add('completed');
+		} else {
+			goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> In Progress';
+			goalStatus.classList.remove('completed');
+			goalCard.classList.remove('completed');
+		}
 	}
 
 	// Обновляем счетчик подцелей в заголовке
@@ -522,6 +978,22 @@ function updateIndexGoalProgress(goalIdOrElement) {
 					percentElement.textContent = `${progressPercent}%`;
 				}
 
+				// Обновляем статус цели
+				const goalStatus = goalCard.querySelector('.goal-status');
+				const isCompleted = data.goal_completed || progressPercent === 100;
+
+				if (goalStatus) {
+					if (isCompleted) {
+						goalStatus.innerHTML = '<i class="fa-solid fa-check-circle"></i> Completed';
+						goalStatus.classList.add('completed');
+						goalCard.classList.add('completed');
+					} else {
+						goalStatus.innerHTML = '<i class="fa-regular fa-circle"></i> In Progress';
+						goalStatus.classList.remove('completed');
+						goalCard.classList.remove('completed');
+					}
+				}
+
 				const subgoalsHeader = goalCard.querySelector('.subgoals-section h4');
 				if (subgoalsHeader) {
 					const headerText = `Subgoals (${completedSubgoals}/${totalSubgoals})`;
@@ -530,6 +1002,11 @@ function updateIndexGoalProgress(goalIdOrElement) {
 
 				// Обновляем визуальное состояние подцелей
 				updateIndexSubgoalsVisualState(goalCard);
+
+				// Сортируем подцели после обновления состояния с анимацией
+				setTimeout(() => {
+					sortSubgoalsInGoalCard(goalCard, true);
+				}, 100);
 
 				// Проверяем завершение цели
 				if (progressPercent === 100 && totalSubgoals > 0 && !goalCard.classList.contains('goal-completed')) {

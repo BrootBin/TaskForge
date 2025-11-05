@@ -46,6 +46,8 @@ urlpatterns = [
    path('api/delete-habit/', views.delete_habit, name='delete_habit'),
    path('api/toggle-habit-active/', views.toggle_habit_active, name='toggle_habit_active'),
    path('api/habit-checkin/', views.habit_checkin, name='habit_checkin'),
+   path('api/get-habits-stats/', views.get_habits_stats, name='get_habits_stats'),
+   path('api/get-user-habits/', views.get_user_habits, name='get_user_habits'),
    path('api/daily-habits-status/', views.daily_habits_status, name='daily_habits_status'),
 	
    # API для отримання даних активності користувача
@@ -54,7 +56,7 @@ urlpatterns = [
    # API для роботи з календарем звичок
    path('api/habits-completion-history/', views.habits_completion_history, name='habits_completion_history'),
    path('api/habits-completion/', views.save_habits_completion, name='save_habits_completion'),
-   
-   # API для технической поддержки
+
+   # API для технічної підтримки
    path('api/support/send-message/', views.send_support_message, name='send_support_message'),
 ]

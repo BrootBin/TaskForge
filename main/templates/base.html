@@ -8,7 +8,7 @@
 
     <!-- Preload критичних ресурсів для прискорення загрузки -->
     <link rel="preload" href="{% static 'css/main.css' %}" as="style" />
-    <link rel="preload" href="{% static 'js/main.js' %}" as="script" />
+    <link rel="preload" href="{% static 'js/main.js' %}?v=5" as="script" />
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@300;400;600&display=swap" as="style" />
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
@@ -260,7 +260,7 @@
     </button>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/main.js' %}?v=5"></script>
     {% block extra_js %}{% endblock %}
     <script>
         {% if show_2fa_modal and username %}

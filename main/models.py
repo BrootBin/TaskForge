@@ -24,7 +24,7 @@ class Habit(models.Model):
     last_checkin = models.DateField(null=True, blank=True)
     frequency = models.CharField(
         max_length=20,
-        choices=[('daily','Daily'), ('weekly','Weekly')]
+        choices=[('daily','Daily'), ('weekly','Weekly'), ('monthly','Monthly')]
     )
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -33,15 +33,45 @@ class Habit(models.Model):
         return self.name
     
     def is_checked_today(self):
-        """Перевіряє, чи відмічена привычка сьогодні"""
         from django.utils import timezone
         today = timezone.now().date()
         return self.checkins.filter(date=today, completed=True).exists()
     
     @property
     def current_streak(self):
-        """Повертає поточну серію днів"""
         return self.streak_days
+    
+    @property
+    def longest_streak(self):
+        return self.streak_days
+    
+    @property
+    def completion_rate(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today = timezone.now().date()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        # Кількість днів в періоді
+        if self.frequency == 'daily':
+            total_possible = 30
+        elif self.frequency == 'weekly':
+            total_possible = 4  # приблизно 4 тижні в місяці
+        else:
+            total_possible = 1  # для monthly
+        
+        # Кількість завершених днів
+        completed_count = self.checkins.filter(
+            date__gte=thirty_days_ago,
+            date__lte=today,
+            completed=True
+        ).count()
+        
+        if total_possible == 0:
+            return 0
+        
+        return min(100, round((completed_count / total_possible) * 100))
 
 
 class HabitCheckin(models.Model):
@@ -61,7 +91,7 @@ class HabitTemplate(models.Model):
     description = models.TextField(blank=True)
     frequency = models.CharField(
         max_length=20,
-        choices=[('daily','Daily'), ('weekly','Weekly')]
+        choices=[('daily','Daily'), ('weekly','Weekly'), ('monthly','Monthly')]
     )
 
     def __str__(self):
