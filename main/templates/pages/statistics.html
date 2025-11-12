@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}
+  Statistics - TaskForge
+{% endblock %}
+
+{% block content %}
+  <!-- Подключаем стили и скрипты -->
+  <link rel="stylesheet" href="{% static 'css/pages/statistics.css' %}?v=1" />
+
+  <div class="statistics-page">
+    <!-- Заголовок страницы -->
+    <div class="page-header animate-fade-in">
+      <h1><i class="fas fa-chart-line"></i> Your Statistics</h1>
+      <p>Track your progress and achievements</p>
+    </div>
+
+    <!-- Общая статистика - карточки -->
+    <div class="overview-section animate-slide-up">
+      <h2 class="section-title">Overview</h2>
+      <div class="stats-grid">
+        <!-- Goals Stats -->
+        <div class="stat-card stat-card-primary">
+          <div class="stat-icon">
+            <i class="fas fa-bullseye"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ total_goals }}</div>
+            <div class="stat-label">Total Goals</div>
+            <div class="stat-detail">{{ completed_goals }} completed • {{ active_goals }} active</div>
+          </div>
+          <div class="stat-progress">
+            <div class="progress-ring" data-progress="{{ average_goal_progress }}">
+              <svg width="60" height="60">
+                <circle class="progress-ring-circle-bg" cx="30" cy="30" r="26" />
+                <circle class="progress-ring-circle" cx="30" cy="30" r="26" />
+              </svg>
+              <div class="progress-text">{{ average_goal_progress }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Habits Stats -->
+        <div class="stat-card stat-card-success">
+          <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ total_habits }}</div>
+            <div class="stat-label">Total Habits</div>
+            <div class="stat-detail">{{ completed_today }}/{{ active_habits }} completed today</div>
+          </div>
+          <div class="stat-progress">
+            <div class="progress-ring" data-progress="{{ today_completion_percent }}">
+              <svg width="60" height="60">
+                <circle class="progress-ring-circle-bg" cx="30" cy="30" r="26" />
+                <circle class="progress-ring-circle" cx="30" cy="30" r="26" />
+              </svg>
+              <div class="progress-text">{{ today_completion_percent }}%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Streak Stats -->
+        <div class="stat-card stat-card-warning">
+          <div class="stat-icon">
+            <i class="fas fa-fire"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ current_max_streak }}</div>
+            <div class="stat-label">Current Streak</div>
+            <div class="stat-detail">Longest: {{ longest_streak_ever }} days</div>
+          </div>
+          <div class="stat-badge">
+            <i class="fas fa-trophy"></i>
+          </div>
+        </div>
+
+        <!-- Activity Stats -->
+        <div class="stat-card stat-card-info">
+          <div class="stat-icon">
+            <i class="fas fa-bolt"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ total_activity_points }}</div>
+            <div class="stat-label">Activity Points</div>
+            <div class="stat-detail">{{ recent_checkins }} check-ins this week</div>
+          </div>
+          <div class="stat-badge">
+            <i class="fas fa-star"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="charts-section">
+      <!-- График привычек -->
+      <div class="chart-container animate-slide-up-delay-1">
+        <div class="chart-header">
+          <h3><i class="fas fa-calendar-check"></i> Habits Completion (Last 30 Days)</h3>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot legend-primary"></span> Completed Habits</span>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="habitsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- График целей -->
+      <div class="chart-container animate-slide-up-delay-2">
+        <div class="chart-header">
+          <h3><i class="fas fa-tasks"></i> Goals Progress</h3>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot legend-success"></span> Progress</span>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="goalsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- График активности -->
+      <div class="chart-container animate-slide-up-delay-3">
+        <div class="chart-header">
+          <h3><i class="fas fa-chart-area"></i> Weekly Activity</h3>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot legend-info"></span> Activity Points</span>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="activityChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Достижения и мотивация -->
+    <div class="achievements-section animate-fade-in-delay">
+      <h2 class="section-title">Recent Achievements</h2>
+      <div class="achievements-grid">
+        {% if completed_goals > 0 %}
+          <div class="achievement-card achievement-unlocked">
+            <div class="achievement-icon">
+              <i class="fas fa-trophy"></i>
+            </div>
+            <div class="achievement-content">
+              <h4>Goal Achiever</h4>
+              <p>Completed {{ completed_goals }} goal{{ completed_goals|pluralize }}</p>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if longest_streak_ever >= 7 %}
+          <div class="achievement-card achievement-unlocked">
+            <div class="achievement-icon">
+              <i class="fas fa-fire"></i>
+            </div>
+            <div class="achievement-content">
+              <h4>Week Warrior</h4>
+              <p>{{ longest_streak_ever }}-day streak maintained!</p>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if avg_habit_completion >= 80 %}
+          <div class="achievement-card achievement-unlocked">
+            <div class="achievement-icon">
+              <i class="fas fa-star"></i>
+            </div>
+            <div class="achievement-content">
+              <h4>Consistency Master</h4>
+              <p>{{ avg_habit_completion }}% habit completion rate</p>
+            </div>
+          </div>
+        {% endif %}
+
+        {% if total_activity_points >= 100 %}
+          <div class="achievement-card achievement-unlocked">
+            <div class="achievement-icon">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <div class="achievement-content">
+              <h4>Activity Champion</h4>
+              <p>{{ total_activity_points }} activity points earned</p>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Заблокированные достижения для мотивации -->
+        {% if avg_habit_completion < 100 %}
+          <div class="achievement-card achievement-locked">
+            <div class="achievement-icon">
+              <i class="fas fa-lock"></i>
+            </div>
+            <div class="achievement-content">
+              <h4>Perfectionist</h4>
+              <p>Achieve 100% habit completion</p>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Скрипты для графиков -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    // Передаем данные из Django в JavaScript
+    window.STATISTICS_DATA = {
+        habits: {{ habits_chart_data|safe }},
+        goals: {{ goals_chart_data|safe }},
+        activity: {{ activity_chart_data|safe }}
+    };
+</script>
+  <script src="{% static 'js/pages/statistics.js' %}?v=1"></script>
+{% endblock %}

@@ -1,0 +1,286 @@
+/* 
+ * Стилі кнопок
+ * TaskForge - всі види кнопок
+ */
+
+/* Базова кнопка */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px 20px;
+	background-color: var(--bg-main);
+	color: var(--primary);
+	font-weight: 600;
+	border-radius: var(--border-radius-md);
+	text-decoration: none;
+	border: 2px solid var(--primary);
+	transition: background 0.3s, color 0.3s;
+	cursor: pointer;
+}
+
+.btn:hover {
+	background-color: var(--bg-input);
+	color: var(--primary-hover);
+}
+
+/* Кнопка підтвердження */
+.confirm-btn {
+	background: var(--primary);
+	color: var(--bg-main);
+	border: none;
+	padding: 12px 20px;
+	border-radius: var(--border-radius-md);
+	font-weight: bold;
+	cursor: pointer;
+	margin-top: 20px;
+	width: 100%;
+	transition: all 0.3s;
+}
+
+.confirm-btn:hover {
+	background: var(--primary-hover);
+}
+
+.confirm-btn:disabled {
+	background: #555;
+	color: #888;
+	cursor: not-allowed;
+}
+
+/* Кнопка повернення */
+.back-btn {
+	background: transparent;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	font-size: 16px;
+	padding: 5px 10px;
+	margin-bottom: 15px;
+}
+
+.back-btn:hover {
+	color: var(--primary);
+}
+
+/* Кнопка додавання */
+.add-btn {
+	background: var(--bg-card);
+	border: 1px solid #444;
+	padding: 8px 12px;
+	color: var(--primary);
+	border-radius: var(--border-radius-sm);
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.add-btn:hover {
+	background: var(--bg-card-hover);
+}
+
+/* Широка кнопка логіну */
+.wide-btn {
+	width: calc(40% + 10px);
+	margin-left: -10px;
+	margin-right: -10px;
+}
+
+/* Кнопка використання шаблону */
+.template-use-btn {
+	display: inline-block;
+	margin-top: 8px;
+	padding: 4px 8px;
+	background-color: var(--primary-very-light);
+	border: 1px solid var(--primary);
+	border-radius: var(--border-radius-sm);
+	color: var(--primary);
+	font-size: 12px;
+	text-align: center;
+	transition: all 0.3s ease;
+}
+
+.template-use-btn:hover {
+	background-color: var(--primary-light);
+}
+
+/* Кнопка перемикання шаблонів */
+.template-btn {
+	background: var(--bg-card-hover);
+	border: 1px solid #333;
+	color: var(--text-secondary);
+	padding: 8px 16px;
+	border-radius: var(--border-radius-sm);
+	cursor: pointer;
+	transition: all 0.3s;
+}
+
+.template-btn.active {
+	background: var(--primary);
+	color: var(--bg-main);
+	font-weight: bold;
+}
+
+/* Кнопка видалення */
+.remove-subgoal {
+	background: #555;
+	color: #fff;
+	border: none;
+	border-radius: var(--border-radius-sm);
+	width: 30px;
+	cursor: pointer;
+}
+
+.remove-subgoal:hover {
+	background: var(--danger);
+}
+
+/* === Основные стили кнопок === */
+.btn-primary {
+	background: linear-gradient(135deg, var(--primary), #ffdd44);
+	color: var(--bg-primary);
+	border: none;
+	padding: 12px 20px;
+	border-radius: var(--border-radius-sm);
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	text-decoration: none;
+}
+
+.btn-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+}
+
+.btn-primary:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+}
+
+.btn-secondary {
+	background: transparent;
+	color: var(--text-primary);
+	border: 1px solid rgba(212, 175, 55, 0.3);
+	padding: 12px 20px;
+	border-radius: var(--border-radius-sm);
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	text-decoration: none;
+}
+
+.btn-secondary:hover {
+	background: rgba(212, 175, 55, 0.1);
+	border-color: var(--primary);
+}
+
+.btn-danger {
+	background: linear-gradient(135deg, #ff6b6b, #ff5252);
+	color: white;
+	border: none;
+	padding: 12px 20px;
+	border-radius: var(--border-radius-sm);
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	text-decoration: none;
+}
+
+.btn-danger:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.btn-icon {
+	background: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	color: var(--text-secondary);
+	padding: 6px 8px;
+	border-radius: var(--border-radius-sm);
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 28px;
+	min-height: 28px;
+	font-size: 0.8rem;
+}
+
+.btn-icon:hover {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Специальные варианты btn-icon */
+.btn-icon.delete-btn,
+.delete-goal-btn,
+.delete-habit-btn {
+	border-color: rgba(255, 0, 0, 0.3);
+	color: #ff6b6b;
+}
+
+.btn-icon.delete-btn:hover,
+.delete-goal-btn:hover,
+.delete-habit-btn:hover {
+	background: rgba(255, 0, 0, 0.1);
+	border-color: #ff6b6b;
+}
+
+.btn-icon.toggle-btn,
+.toggle-habit-btn {
+	border-color: rgba(212, 175, 55, 0.3);
+	color: var(--primary);
+}
+
+.btn-icon.toggle-btn:hover,
+.toggle-habit-btn:hover {
+	background: rgba(212, 175, 55, 0.1);
+	border-color: var(--primary);
+}
+
+/* === Стили для empty state === */
+.empty-state {
+	text-align: center;
+	padding: 60px 20px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.empty-state .btn-primary {
+	margin-top: 20px;
+	align-self: center;
+	min-width: 200px;
+}
+
+.empty-icon {
+	font-size: 4rem;
+	color: var(--primary);
+	margin-bottom: 20px;
+	opacity: 0.7;
+}
+
+.empty-state h3 {
+	color: var(--text-primary);
+	margin-bottom: 10px;
+}
+
+.empty-state p {
+	color: var(--text-secondary);
+	margin-bottom: 25px;
+}

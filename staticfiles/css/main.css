@@ -1,0 +1,34 @@
+/* 
+ * TaskForge - Main CSS
+ * Цей файл імпортує всі інші CSS-файли у правильному порядку
+ */
+
+/* Базові стилі */
+@import url('./base/colors.css');
+@import url('./base/reset.css');
+@import url('./base/typography.css');
+@import url('./base/global.css');
+
+/* Компоненти */
+@import url('./components/navbar.css');
+@import url('./components/buttons.css');
+@import url('./components/cards.css');
+@import url('./components/calendar.css');
+@import url('./components/progress.css');
+@import url('./components/modals.css');
+@import url('./components/forms.css');
+@import url('./components/subgoal.css');
+@import url('./components/notification.css');
+@import url('./components/goal.css');
+
+/* Макети */
+@import url('./layout/dashboard.css');
+@import url('./layout/stats-dashboard.css');
+@import url('./layout/footer.css');
+@import url('./layout/fix.css');
+/* Додаємо фікси позиціонування */
+@import url('./layout/dashboard.css');
+@import url('./layout/stats-dashboard.css');
+@import url('./layout/footer.css');
+
+/* Додаткові перевизначення та утиліти */

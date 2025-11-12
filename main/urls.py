@@ -6,6 +6,7 @@ urlpatterns = [
    path('', views.home, name='home'),
    path('goals/', views.goals_page, name='goals'),
    path('habits/', views.habits_page, name='habits'),
+   path('statistics/', views.statistics_page, name='statistics'),
 	path("register/", views.register_view, name="register"),
    path("login/", views.login_view, name="login"),
    path("logout/", views.logout_view, name="logout"),
@@ -13,6 +14,8 @@ urlpatterns = [
 
 	# API для сповіщень та Telegram
 	path('api/notifications/latest/', views.latest_notifications, name='latest_notifications'),
+	path('api/notifications/unread-count/', views.unread_notifications_count, name='unread_notifications_count'),
+	path('api/notifications/mark-read/', views.mark_notification_read, name='mark_notification_read'),
 	path('bind_telegram/', views.bind_telegram, name='bind_telegram'),
 
 	# API для управління Telegram
@@ -59,4 +62,7 @@ urlpatterns = [
 
    # API для технічної підтримки
    path('api/support/send-message/', views.send_support_message, name='send_support_message'),
+   
+   # Тестовый endpoint для WebSocket
+   path('api/test-websocket/', views.test_websocket_notification, name='test_websocket_notification'),
 ]

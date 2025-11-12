@@ -1,0 +1,286 @@
+.subgoals-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.subgoals-list li {
+	display: flex;
+	align-items: center;
+	margin-bottom: 5px;
+	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+	transform: translateY(0);
+	opacity: 1;
+}
+
+/* Анімації для переупорядкування */
+.moving-up {
+	animation: moveUp 0.4s ease-in-out;
+}
+
+.moving-down {
+	animation: moveDown 0.4s ease-in-out;
+}
+
+/* Попередній перегляд для прихованих елементів */
+.reordering-hidden {
+	animation: reorderingPeek 0.6s ease-in-out;
+	display: block !important;
+	opacity: 1 !important;
+}
+
+@keyframes moveUp {
+	0% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(-10px);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+@keyframes moveDown {
+	0% {
+		transform: translateY(0);
+	}
+
+	50% {
+		transform: translateY(10px);
+		opacity: 0.7;
+	}
+
+	100% {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+/* Спеціальна анімація для прихованих елементів при переупорядкуванні */
+.subgoal-item.reordering-hidden {
+	display: flex !important;
+	animation: reorderingPeek 0.6s ease-in-out;
+	position: relative;
+	z-index: 10;
+}
+
+@keyframes reorderingPeek {
+	0% {
+		opacity: 0;
+		transform: translateY(20px) scale(0.8);
+	}
+
+	30% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+
+	70% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+
+	100% {
+		opacity: 0;
+		transform: translateY(-20px) scale(0.8);
+	}
+}
+
+/* Показываем только первые 3 подцели по умолчанию */
+.subgoals-list .subgoal-item {
+	display: flex;
+}
+
+/* Скрываем подцели после 3-х элементов */
+.subgoals-list .subgoal-item.hidden-subgoal {
+	display: none;
+}
+
+/* Коли список розгорнутий, показуємо всі підцілі */
+.subgoals-list.expanded .subgoal-item {
+	display: flex;
+}
+
+.subgoals-list.expanded .subgoal-item.hidden-subgoal {
+	display: flex;
+}
+
+/* Коли список розгорнутий, приховуємо індикатор "more" */
+.subgoals-list.expanded .more-subgoals-indicator {
+	display: none;
+}
+
+/* Стилі для індикатора "більше підцілей" */
+.more-subgoals-indicator {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 5px;
+	padding: 5px 0;
+}
+
+.more-text {
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+}
+
+.show-all-subgoals-btn {
+	background: none;
+	border: 1px solid var(--primary);
+	color: var(--primary);
+	padding: 4px 8px;
+	border-radius: var(--border-radius-sm);
+	font-size: 0.8rem;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.show-all-subgoals-btn:hover {
+	background-color: var(--primary);
+	color: var(--bg-card);
+}
+
+/* Стилі для обраної мети */
+.goal-card.selected {
+	position: relative;
+	z-index: 100;
+	box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+	border: 2px solid var(--primary);
+	transform: scale(1.02);
+	transition: all 0.3s ease;
+	background-color: var(--bg-card-hover);
+}
+
+/* Стили для раскрытой цели */
+.goal-card.goal-expanded {
+	position: relative;
+	z-index: 50;
+	box-shadow: 0 12px 32px rgba(212, 175, 55, 0.3);
+	border: 2px solid var(--primary);
+	background-color: var(--bg-card-hover);
+	transition: all 0.3s ease;
+}
+
+/* Затемнение других целей когда одна раскрыта */
+.goal-card.goal-expanded~.goal-card:not(.goal-expanded) {
+	opacity: 0.7;
+	transition: opacity 0.3s ease;
+}
+
+/* Возвращаем opacity при ховере */
+.goal-card:not(.goal-expanded):hover {
+	opacity: 1 !important;
+}
+
+/* Затемнюючий overlay */
+.goal-card.selected::after {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.3);
+	z-index: -1;
+	pointer-events: auto;
+	animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+.subgoal-checkbox {
+	cursor: pointer;
+	margin-right: 8px;
+	font-size: 1.2rem;
+	color: var(--primary);
+	transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.subgoal-checkbox:hover {
+	transform: scale(1.1);
+	color: var(--primary-hover);
+}
+
+.subgoal-name {
+	transition: color 0.2s ease;
+	color: var(--text-primary);
+	user-select: none;
+	/* Забороняємо виділення тексту */
+}
+
+.subgoal-name.completed {
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7;
+}
+
+.subgoal-item.completed .subgoal-name {
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7;
+}
+
+/* Специфично для span элементов на главной странице */
+span.subgoal-name.completed,
+.subgoal-item.completed span.subgoal-name {
+	text-decoration: line-through !important;
+	color: var(--text-tertiary) !important;
+	opacity: 0.7 !important;
+}
+
+/* Анімація при відмітці підцілі */
+@keyframes checkmark-pop {
+	0% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.2);
+		color: var(--primary-hover);
+	}
+
+	100% {
+		transform: scale(1);
+		color: var(--primary);
+	}
+}
+
+.subgoal-checkbox.just-checked i {
+	animation: checkmark-pop 0.3s ease forwards;
+	color: var(--primary-hover);
+}
+
+/* Анімація при зняті відмітки */
+@keyframes uncheck-fade {
+	0% {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	50% {
+		opacity: 0.7;
+		transform: scale(0.95);
+	}
+
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.subgoal-checkbox.just-unchecked i {
+	animation: uncheck-fade 0.2s ease forwards;
+}

@@ -38,19 +38,30 @@
             <a href="{% url 'home' %}">Dashboard</a>
           </li>
           <li>
-            <a href="{% url 'goals' %}">My goals</a>
+            <a href="{% url 'goals' %}">Goals</a>
           </li>
           <li>
             <a href="{% url 'habits' %}">Habits</a>
           </li>
           <li>
-            <a href="#">Statistics</a>
+            <a href="{% url 'statistics' %}">Statistics</a>
           </li>
         </ul>
       </nav>
       <div class="profile-icon">
         <i id="profile-btn" class="fa-regular fa-user" style="color: #FFD700; cursor: pointer;"></i>
       </div>
+
+      {% if user.is_authenticated %}
+        {% if is_tech_admin %}
+          <div class="admin-link">
+            <a href="/admin/" title="Admin Panel">
+              <i class="fa-solid fa-user-shield"></i>
+              <span>Admin</span>
+            </a>
+          </div>
+        {% endif %}
+      {% endif %}
 
       <div class="notifications-container">
         <i id="bell" class="fa-regular fa-bell" style="color: #FFD700; cursor: pointer;"></i>
@@ -260,8 +271,10 @@
     </button>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="{% static 'js/notification.js' %}"></script>
+    <script src="{% static 'js/websocket-notifications.js' %}"></script>
     <script src="{% static 'js/main.js' %}?v=5"></script>
-    {% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock extra_js %}
     <script>
         {% if show_2fa_modal and username %}
             window.show2faUser = "{{ username }}";

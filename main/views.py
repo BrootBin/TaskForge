@@ -572,6 +572,15 @@ def latest_notifications(request):
 
     return JsonResponse({'notifications': data})
 
+def unread_notifications_count(request):
+    """API для подсчета непрочитанных уведомлений"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'count': 0})
+    
+    count = Notification.objects.filter(user=request.user, read=False).count()
+    print(f"📊 Unread notifications for {request.user.username}: {count}")
+    return JsonResponse({'count': count})
+
 @login_required
 @login_required
 def generate_telegram_code(request):
@@ -757,7 +766,7 @@ def use_goal_template(request):
             )
         
         return JsonResponse({
-            "status": "ok",
+            "status": "success",
             "goal_id": new_goal.id,
             "message": f"Goal '{template.name}' successfully added"
         })
@@ -1218,6 +1227,10 @@ def habit_checkin(request):
                 habit.streak_days = 1
             
             habit.last_checkin = checkin_date
+            
+            # Обновляем максимальный streak
+            if habit.streak_days > habit.max_streak_days:
+                habit.max_streak_days = habit.streak_days
         else:
             # Якщо скасували чекін, перерахуємо streak
             if habit.last_checkin == checkin_date:
@@ -1578,3 +1591,205 @@ def save_habits_completion(request):
         logger = logging.getLogger(__name__)
         logger.error(f"Error saving habits completion: {str(e)}")
         return JsonResponse({"status": "error", "message": "Failed to save habits completion"}, status=500)
+
+
+@login_required
+def statistics_page(request):
+    """Страница статистики пользователя с графиками и анимациями"""
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Count, Avg, Q
+    
+    # Получаем цели пользователя
+    user_goals = Goal.objects.filter(user=request.user)
+    total_goals = user_goals.count()
+    completed_goals = user_goals.filter(completed=True).count()
+    active_goals = user_goals.filter(completed=False).count()
+    
+    # Прогресс активных целей
+    active_goals_list = user_goals.filter(completed=False).prefetch_related('subgoals')
+    total_progress = 0
+    if active_goals_list.exists():
+        for goal in active_goals_list:
+            total_progress += goal.get_progress_percent()
+        average_goal_progress = round(total_progress / active_goals_list.count(), 1)
+    else:
+        average_goal_progress = 0
+    
+    # Получаем привычки пользователя
+    user_habits = Habit.objects.filter(user=request.user)
+    total_habits = user_habits.count()
+    active_habits = user_habits.filter(active=True).count()
+    
+    # Статистика привычек
+    today = timezone.now().date()
+    completed_today = sum(1 for habit in user_habits.filter(active=True) if habit.is_checked_today())
+    
+    # Процент выполнения привычек на сегодня (для круговой диаграммы)
+    if active_habits > 0:
+        today_completion_percent = round((completed_today / active_habits) * 100, 1)
+    else:
+        today_completion_percent = 0
+    
+    # Средний процент выполнения привычек за все время
+    if active_habits > 0:
+        avg_habit_completion = round(
+            sum(habit.completion_rate for habit in user_habits.filter(active=True)) / active_habits,
+            1
+        )
+    else:
+        avg_habit_completion = 0
+    
+    # Текущий и максимальный streak
+    current_max_streak = 0
+    longest_streak_ever = 0
+    for habit in user_habits.filter(active=True):
+        current_max_streak = max(current_max_streak, habit.current_streak)
+        longest_streak_ever = max(longest_streak_ever, habit.longest_streak)
+    
+    # Активность за последние 7 дней
+    week_ago = today - timedelta(days=7)
+    recent_checkins = HabitCheckin.objects.filter(
+        habit__user=request.user,
+        date__gte=week_ago,
+        completed=True
+    ).count()
+    
+    # Активность пользователя
+    activity_data_raw = get_user_weekly_activity(request.user)
+    total_activity_points = activity_data_raw.get('total_activities', 0)
+    
+    # Подготовка данных для графиков
+    # График выполнения привычек за последние 30 дней
+    habits_chart_data = []
+    for i in range(30):
+        check_date = today - timedelta(days=29-i)
+        completed = HabitCheckin.objects.filter(
+            habit__user=request.user,
+            date=check_date,
+            completed=True
+        ).count()
+        habits_chart_data.append({
+            'date': check_date.strftime('%d.%m'),
+            'completed': completed
+        })
+    
+    # График прогресса целей (топ-5 активных)
+    goals_chart_data = []
+    for goal in active_goals_list[:5]:
+        goals_chart_data.append({
+            'id': goal.id,
+            'name': goal.name[:20] + ('...' if len(goal.name) > 20 else ''),
+            'progress': goal.get_progress_percent()
+        })
+    
+    # Подготовка данных активности для графика
+    activity_chart_data = []
+    if 'weekly_data' in activity_data_raw and 'labels' in activity_data_raw:
+        for day_label, count in zip(activity_data_raw['labels'], activity_data_raw['weekly_data']):
+            activity_chart_data.append({
+                'day': day_label,
+                'count': count
+            })
+    
+    context = {
+        # Общая статистика
+        'total_goals': total_goals,
+        'completed_goals': completed_goals,
+        'active_goals': active_goals,
+        'average_goal_progress': average_goal_progress,
+        
+        'total_habits': total_habits,
+        'active_habits': active_habits,
+        'completed_today': completed_today,
+        'today_completion_percent': today_completion_percent,
+        'avg_habit_completion': avg_habit_completion,
+        'current_max_streak': current_max_streak,
+        'longest_streak_ever': longest_streak_ever,
+        
+        'recent_checkins': recent_checkins,
+        'total_activity_points': total_activity_points,
+        
+        # Данные для графиков (будем передавать как JSON)
+        'habits_chart_data': json.dumps(habits_chart_data),
+        'goals_chart_data': json.dumps(goals_chart_data),
+        'activity_chart_data': json.dumps(activity_chart_data),
+    }
+    
+    return render(request, 'pages/statistics.html', context)
+
+@login_required
+def test_websocket_notification(request):
+    """Отправляет тестовое уведомление текущему пользователю через WebSocket"""
+    from datetime import datetime
+    from channels.layers import get_channel_layer
+    from asgiref.sync import async_to_sync
+    
+    user = request.user
+    
+    # Создаем уведомление в БД
+    notification = Notification.objects.create(
+        user=user,
+        message=f"🧪 Test WebSocket at {datetime.now().strftime('%H:%M:%S')}",
+        notification_type='general',
+        web_sent=True,
+        telegram_sent=False
+    )
+    
+    # Отправляем через WebSocket
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        try:
+            async_to_sync(channel_layer.group_send)(
+                f'user_{user.id}',
+                {
+                    'type': 'notification_message',
+                    'message': notification.message,
+                    'notification_id': notification.id,
+                    'created_at': notification.created_at.isoformat(),
+                    'notification_type': notification.notification_type
+                }
+            )
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Sent via WebSocket',
+                'notification_id': notification.id
+            })
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    else:
+        return JsonResponse({'status': 'error', 'message': 'No channel layer'}, status=500)
+
+
+@login_required
+def mark_notification_read(request):
+    """Помечает уведомление как прочитанное"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    import json
+    try:
+        data = json.loads(request.body)
+        notification_id = data.get('notification_id')
+        
+        if not notification_id:
+            return JsonResponse({'status': 'error', 'message': 'Missing notification_id'}, status=400)
+        
+        print(f"📝 Marking notification {notification_id} as read for user {request.user.username}")
+        
+        # Помечаем как прочитанное
+        updated = Notification.objects.filter(
+            id=notification_id,
+            user=request.user
+        ).update(read=True)
+        
+        if updated:
+            print(f"✅ Notification {notification_id} marked as read")
+            return JsonResponse({'status': 'success', 'message': 'Marked as read'})
+        else:
+            print(f"⚠️ Notification {notification_id} not found or not owned by user")
+            return JsonResponse({'status': 'error', 'message': 'Notification not found'}, status=404)
+    
+    except Exception as e:
+        print(f"❌ Error marking notification as read: {e}")
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

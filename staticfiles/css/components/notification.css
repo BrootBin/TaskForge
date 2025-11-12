@@ -1,0 +1,118 @@
+#notification-container {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	max-width: 350px;
+}
+
+.notification {
+	display: flex;
+	align-items: center;
+	padding: 15px;
+	border-radius: var(--border-radius-md);
+	box-shadow: var(--shadow-modal);
+	background-color: var(--bg-card);
+	color: var(--text-primary);
+	transition: all 0.3s ease;
+	opacity: 0;
+	transform: translateX(30px);
+	overflow: hidden;
+	border-left: 4px solid var(--primary);
+}
+
+.notification.show {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+.notification.hide {
+	opacity: 0;
+	transform: translateX(30px);
+}
+
+.notification-icon {
+	margin-right: 12px;
+	font-size: 1.2rem;
+}
+
+.notification-content {
+	flex: 1;
+	font-size: 14px;
+	color: var(--text-primary);
+}
+
+.notification-close {
+	background: none;
+	border: none;
+	color: var(--text-secondary);
+	cursor: pointer;
+	padding: 5px;
+	font-size: 0.9rem;
+	transition: color 0.2s;
+}
+
+.notification-close:hover {
+	color: var(--text-primary);
+}
+
+/* Типи сповіщень */
+.notification-info {
+	border-left-color: var(--primary);
+}
+
+.notification-info .notification-icon {
+	color: var(--primary);
+}
+
+.notification-success {
+	border-left-color: var(--success);
+}
+
+.notification-success .notification-icon {
+	color: var(--success);
+}
+
+.notification-warning {
+	border-left-color: #f39c12;
+}
+
+.notification-warning .notification-icon {
+	color: #f39c12;
+}
+
+.notification-error {
+	border-left-color: var(--danger);
+}
+
+.notification-error .notification-icon {
+	color: var(--danger);
+}
+
+/* Анимация появления */
+@keyframes notification-slide-in {
+	from {
+		opacity: 0;
+		transform: translateX(30px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@keyframes notification-slide-out {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	to {
+		opacity: 0;
+		transform: translateX(30px);
+	}
+}

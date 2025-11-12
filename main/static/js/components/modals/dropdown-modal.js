@@ -1,197 +1,250 @@
-/**
- * Dropdown modal component for TaskForge
- * Handles profile dropdown and notifications dropdown
- */
-console.log('Dropdown modal component initialized');
+console.log('🔔 Dropdown loaded');
 
-/**
- * Инициализирует выпадающие меню
- */
-function initDropdownModals() {
-	console.log('🔧 Initializing dropdown modals...');
+window.NotificationsDropdown = {
+	pollingInterval: null,
+	lastUnreadCount: 0,
+	isActiveHours: false,
 
-	// Инициализируем выпадающие меню
-	initDropdownMenus();
-	initNotificationsDropdown();
+	init: function () {
+		this.initDropdownMenus();
+		this.startPolling();
+	},
 
-	console.log('✅ Dropdown modals initialized');
-}
+	// Проверяем активное время: 21:00-00:01
+	checkActiveHours: function () {
+		const now = new Date();
+		const hour = now.getHours();
+		const minute = now.getMinutes();
 
-/**
- * Инициализирует выпадающие меню профиля и уведомлений
- */
-function initDropdownMenus() {
-	console.log('🔧 Initializing dropdown menus...');
+		// Активно с 21:00 до 00:01 (21:00-23:59 и 00:00-00:01)
+		const isActive = (hour >= 21) || (hour === 0 && minute <= 1);
 
-	const profileButton = document.getElementById("profile-dropdown-btn");
-	const profileDropdown = document.getElementById("profile-dropdown");
-	const bellBtn = document.getElementById("bell");
-	const notificationsDropdown = document.querySelector(".notifications-dropdown");
-
-	console.log('🔧 Dropdown elements found:', {
-		profileButton: !!profileButton,
-		profileDropdown: !!profileDropdown,
-		bellBtn: !!bellBtn,
-		notificationsDropdown: !!notificationsDropdown
-	});
-
-	// Обработка кнопки профиля (выпадающее меню) - только для авторизованных
-	if (profileButton && profileDropdown) {
-		console.log('Profile dropdown button found, adding event listener');
-		profileButton.addEventListener("click", function (e) {
-			e.stopPropagation();
-			console.log('Profile dropdown button clicked');
-
-			// Закрываем уведомления, если открыты
-			if (notificationsDropdown) {
-				notificationsDropdown.classList.remove("active");
+		if (isActive !== this.isActiveHours) {
+			this.isActiveHours = isActive;
+			if (isActive) {
+				console.log('🌙 Active hours started (21:00-00:01) - polling enabled');
+			} else {
+				console.log('☀️ Outside active hours - polling disabled');
 			}
+		}
 
-			// Переключаем выпадающее меню профиля
-			profileDropdown.classList.toggle("active");
+		return isActive;
+	},
+
+	startPolling: function () {
+		// Проверяем новые уведомления каждые 60 секунд (только в активное время)
+		const self = this;
+		this.pollingInterval = setInterval(function () {
+			// Проверяем только если сейчас активное время
+			if (self.checkActiveHours()) {
+				self.checkForNewNotifications();
+			}
+		}, 60000);
+		console.log('🔄 Polling started (every 60 seconds, active 21:00-00:01)');
+	},
+
+	checkForNewNotifications: function () {
+		const self = this;
+		// Проверяем количество непрочитанных
+		fetch('/api/notifications/unread-count/', { method: 'GET', cache: 'no-cache' })
+			.then(r => r.json())
+			.then(d => {
+				// Если количество изменилось (появились новые или стало меньше)
+				if (d.count !== self.lastUnreadCount) {
+					console.log('🔄 Unread count changed:', self.lastUnreadCount, '->', d.count);
+					self.lastUnreadCount = d.count;
+
+					// Обновляем список и badge
+					self.refreshNotifications();
+				}
+			})
+			.catch(e => console.error('❌ Poll error:', e));
+	},
+
+	markAsRead: function (id, elem) {
+		fetch('/api/notifications/mark-read/', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.getCookie('csrftoken') },
+			body: JSON.stringify({ notification_id: id })
+		})
+			.then(r => r.json())
+			.then(d => {
+				if (d.success) {
+					elem.setAttribute('data-read', 'true');
+					elem.style.opacity = '0.6';
+				}
+			})
+			.catch(e => console.error('❌ Mark read error:', e));
+	},
+
+	refreshNotifications: function () {
+		console.log('🔄 refreshNotifications called!');
+		const list = document.getElementById('notifications-list');
+		if (!list) {
+			console.error('❌ notifications-list not found!');
+			return;
+		}
+
+		const self = this;
+		console.log('📡 Fetching /api/notifications/latest/...');
+		fetch('/api/notifications/latest/')
+			.then(r => r.json())
+			.then(data => {
+				console.log('📥 Received notifications:', data.notifications.length);
+				list.innerHTML = '';
+				if (data.notifications.length === 0) {
+					const noNotif = document.createElement('li');
+					noNotif.className = 'no-notifications';
+					noNotif.style.cssText = 'padding: 20px; text-align: center; color: #888;';
+					noNotif.textContent = 'No notifications';
+					list.appendChild(noNotif);
+				} else {
+					data.notifications.forEach(n => {
+						const item = document.createElement('li');
+						item.className = 'notification-item';
+						item.setAttribute('data-notification-id', n.id);
+						item.setAttribute('data-read', n.read ? 'true' : 'false');
+						if (n.read) item.style.opacity = '0.6';
+						const date = new Date(n.created_at);
+						const formatted = date.toLocaleString('uk-UA', {
+							day: '2-digit', month: '2-digit', year: 'numeric',
+							hour: '2-digit', minute: '2-digit'
+						});
+						item.innerHTML = '<div class="notification-content"><p class="notification-text">' + n.message + '</p><span class="notification-time">' + formatted + '</span></div>';
+						item.addEventListener('click', function () {
+							if (this.getAttribute('data-read') === 'false') {
+								self.markAsRead(n.id, this);
+							}
+						});
+						list.appendChild(item);
+					});
+				}
+				console.log('✅ Notifications refreshed:', data.notifications.length);
+
+				// Обновляем badge после загрузки
+				self.updateBadge();
+			})
+			.catch(e => console.error('❌ Refresh error:', e));
+	},
+
+	updateBadge: function () {
+		const bell = document.getElementById('bell');
+		if (!bell) return;
+
+		const container = bell.parentElement;
+		fetch('/api/notifications/unread-count/', { method: 'GET', cache: 'no-cache' })
+			.then(r => r.json())
+			.then(d => {
+				const badge = container?.querySelector('.notification-badge');
+				if (d.count > 0) {
+					if (!badge) {
+						const newBadge = document.createElement('div');
+						newBadge.className = 'notification-badge';
+						// Не добавляем текст - просто красная точка
+						container.appendChild(newBadge);
+						bell.classList.add('has-new');
+						console.log('🔴 Badge created');
+					}
+					// Если badge уже есть - ничего не делаем, он уже виден
+				} else if (d.count === 0 && badge) {
+					badge.remove();
+					bell.classList.remove('has-new');
+					console.log('🗑️ Badge removed');
+				}
+			})
+			.catch(e => console.error('❌ Badge error:', e));
+	},
+
+	initNotificationsList: function () {
+		// Просто вызываем refresh - он загрузит свежие данные
+		this.refreshNotifications();
+	},
+
+	cleanupReadNotifications: function () {
+		const self = this;
+		setTimeout(() => {
+			const list = document.getElementById('notifications-list');
+			if (list) {
+				const readItems = list.querySelectorAll('.notification-item[data-read="true"]');
+				readItems.forEach(i => i.remove());
+				const remaining = list.querySelectorAll('.notification-item');
+				if (remaining.length === 0) {
+					const oldMsg = list.querySelector('.no-notifications');
+					if (oldMsg) oldMsg.remove();
+					const noMsg = document.createElement('li');
+					noMsg.className = 'no-notifications';
+					noMsg.style.cssText = 'padding: 20px; text-align: center; color: #888;';
+					noMsg.textContent = 'No notifications';
+					list.appendChild(noMsg);
+				}
+			}
+			// Используем общий метод для обновления badge
+			self.updateBadge();
+		}, 100);
+	},
+
+	initDropdownMenus: function () {
+		const profileBtn = document.getElementById("profile-dropdown-btn");
+		const profileDrop = document.getElementById("profile-dropdown");
+		const bellBtn = document.getElementById("bell");
+		const notifDrop = document.querySelector(".notifications-dropdown");
+		const self = this;
+
+		if (profileBtn && profileDrop) {
+			profileBtn.addEventListener("click", function (e) {
+				e.stopPropagation();
+				if (notifDrop) notifDrop.classList.remove("active");
+				profileDrop.classList.toggle("active");
+			});
+		}
+
+		if (bellBtn && notifDrop) {
+			bellBtn.addEventListener("click", function (e) {
+				e.stopPropagation();
+				if (profileDrop) profileDrop.classList.remove("active");
+				const isClosing = notifDrop.classList.contains("active");
+				notifDrop.classList.toggle("active");
+				if (!isClosing) {
+					self.initNotificationsList();
+				} else {
+					self.cleanupReadNotifications();
+				}
+			});
+		}
+
+		document.addEventListener("click", function (e) {
+			if (profileDrop && !e.target.closest('#profile-dropdown') && !e.target.closest('#profile-dropdown-btn')) {
+				profileDrop.classList.remove("active");
+			}
+			if (notifDrop && !e.target.closest('.notifications-dropdown') && !e.target.closest('#bell')) {
+				const wasActive = notifDrop.classList.contains("active");
+				if (wasActive) {
+					notifDrop.classList.remove("active");
+					self.cleanupReadNotifications();
+				}
+			}
 		});
-	}
 
-	// Обработка кнопки уведомлений
-	if (bellBtn && notificationsDropdown) {
-		console.log('Bell button found, adding event listener');
-		bellBtn.addEventListener("click", function (e) {
-			e.stopPropagation();
-			console.log('Bell button clicked');
+		if (profileDrop) profileDrop.addEventListener("click", (e) => e.stopPropagation());
+		if (notifDrop) notifDrop.addEventListener("click", (e) => e.stopPropagation());
+	},
 
-			// Проверяем авторизацию
-			if (!isUserAuthenticated()) {
-				showMessage('You need to register or log in to view notifications', 'info');
-				return;
+	getCookie: function (name) {
+		let val = null;
+		if (document.cookie && document.cookie !== '') {
+			const cookies = document.cookie.split(';');
+			for (let i = 0; i < cookies.length; i++) {
+				const cookie = cookies[i].trim();
+				if (cookie.substring(0, name.length + 1) === (name + '=')) {
+					val = decodeURIComponent(cookie.substring(name.length + 1));
+					break;
+				}
 			}
-
-			// Закрываем профиль, если открыт
-			if (profileDropdown) {
-				profileDropdown.classList.remove("active");
-			}
-
-			// Переключаем выпадающее меню уведомлений
-			notificationsDropdown.classList.toggle("active");
-		});
-	}
-
-	// Закрытие выпадающих меню при клике вне их
-	document.addEventListener("click", function (e) {
-		// Закрываем профиль, если клик не по нему
-		if (profileDropdown && !e.target.closest('#profile-dropdown') && !e.target.closest('#profile-dropdown-btn')) {
-			profileDropdown.classList.remove("active");
 		}
-
-		// Закрываем уведомления, если клик не по ним
-		if (notificationsDropdown && !e.target.closest('.notifications-dropdown') && !e.target.closest('#bell')) {
-			notificationsDropdown.classList.remove("active");
-		}
-	});
-
-	// Предотвращаем закрытие при клике внутри выпадающих меню
-	if (profileDropdown) {
-		profileDropdown.addEventListener("click", (e) => e.stopPropagation());
-	}
-	if (notificationsDropdown) {
-		notificationsDropdown.addEventListener("click", (e) => e.stopPropagation());
-	}
-
-	console.log('✅ Dropdown menus initialized');
-}
-
-/**
- * Инициализирует выпадающее меню уведомлений
- */
-function initNotificationsDropdown() {
-	console.log('🔧 Initializing notifications dropdown...');
-
-	const notificationsList = document.getElementById("notifications-list");
-
-	// Добавляем сообщение "No notifications" если список пуст
-	if (notificationsList && notificationsList.children.length === 0) {
-		const noNotificationsItem = document.createElement('li');
-		noNotificationsItem.className = 'no-notifications';
-		noNotificationsItem.textContent = 'No notifications';
-		noNotificationsItem.style.cssText = `
-			padding: 15px;
-			text-align: center;
-			color: var(--text-secondary, #666);
-			font-style: italic;
-			border-bottom: none;
-		`;
-		notificationsList.appendChild(noNotificationsItem);
-		console.log('✅ Added "No notifications" message');
-	}
-
-	console.log('✅ Notifications dropdown initialized');
-}
-
-/**
- * Проверяет, авторизован ли пользователь
- * @returns {boolean}
- */
-function isUserAuthenticated() {
-	// Проверяем по классу body (самый надежный способ)
-	if (document.body.classList.contains('authenticated')) {
-		return true;
-	}
-
-	// Проверяем глобальную функцию
-	if (typeof window.isAuthenticated === 'function') {
-		return window.isAuthenticated();
-	}
-
-	// Проверяем по наличию элементов профиля
-	const profileDropdown = document.getElementById('profile-dropdown');
-	if (profileDropdown) {
-		return true; // если есть dropdown профиля, значит пользователь авторизован
-	}
-
-	// Проверяем по содержимому модального окна авторизации
-	const authModal = document.getElementById('auth-modal');
-	if (authModal) {
-		const greeting = authModal.querySelector('h2');
-		if (greeting && greeting.textContent.startsWith('Hi,')) {
-			return true;
-		}
-	}
-
-	// По умолчанию считаем не авторизованным
-	return false;
-}
-
-/**
- * Показывает сообщение
- * @param {string} message - Текст сообщения
- * @param {string} type - Тип сообщения (info, success, error, warning)
- */
-function showMessage(message, type = 'info') {
-	// Используем глобальную функцию, если доступна
-	if (typeof window.showMessage === 'function') {
-		window.showMessage(message, type);
-	} else if (window.notifications && typeof window.notifications.show === 'function') {
-		window.notifications.show(message, type, 3000);
-	} else {
-		// Fallback: простое alert
-		alert(message);
-	}
-}
-
-// Добавляем тестовую функцию
-window.testDropdowns = function () {
-	console.log('🧪 Testing dropdowns...');
-	console.log('User authenticated:', isUserAuthenticated());
-
-	const bellBtn = document.getElementById("bell");
-	const profileBtn = document.getElementById("profile-dropdown-btn");
-
-	console.log('Elements found:', {
-		bellBtn: !!bellBtn,
-		profileBtn: !!profileBtn
-	});
-
-	if (bellBtn) {
-		console.log('Testing bell button...');
-		bellBtn.click();
+		return val;
 	}
 };
+
+function initDropdownModals() {
+	window.NotificationsDropdown.init();
+}

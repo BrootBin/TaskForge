@@ -21,6 +21,7 @@ class Habit(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     streak_days = models.IntegerField(default=0)
+    max_streak_days = models.IntegerField(default=0)  # Максимальный streak за всё время
     last_checkin = models.DateField(null=True, blank=True)
     frequency = models.CharField(
         max_length=20,
@@ -39,11 +40,27 @@ class Habit(models.Model):
     
     @property
     def current_streak(self):
-        return self.streak_days
+        """Возвращает актуальный streak, учитывая пропущенные дни"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        if not self.last_checkin:
+            return 0
+        
+        today = timezone.now().date()
+        days_since_last = (today - self.last_checkin).days
+        
+        # Если последний чекин был сегодня или вчера - streak актуален
+        if days_since_last <= 1:
+            return self.streak_days
+        
+        # Если прошло больше дня - streak прерван
+        return 0
     
     @property
     def longest_streak(self):
-        return self.streak_days
+        """Возвращает максимальный streak за всё время"""
+        return max(self.max_streak_days, self.current_streak)
     
     @property
     def completion_rate(self):
@@ -148,6 +165,14 @@ class SubGoalTemplate(models.Model):
 
 
 class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('general', 'General'),
+        ('streak_reminder', 'Streak Reminder'),
+        ('goal_reminder', 'Goal Reminder'),
+        ('habit_completion', 'Habit Completion'),
+        ('achievement', 'Achievement'),
+    ]
+    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -155,11 +180,19 @@ class Notification(models.Model):
     send_web = models.BooleanField(default=True)
     send_telegram = models.BooleanField(default=False)
     type = models.CharField(max_length=50, default="general")
-
+    notification_type = models.CharField(
+        max_length=50, 
+        choices=NOTIFICATION_TYPES, 
+        default='general'
+    )
+    telegram_sent = models.BooleanField(default=False)
+    web_sent = models.BooleanField(default=False)
+    scheduled_time = models.DateTimeField(null=True, blank=True)
+    related_habit_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
-      preview = self.message if len(self.message) <= 50 else self.message[:50] + "..."
-      return f"{self.user.username}: {preview}"
+        preview = self.message if len(self.message) <= 50 else self.message[:50] + "..."
+        return f"{self.user.username}: {preview}"
 
     def should_send_telegram(self):
         profile = getattr(self.user, 'telegram_profile', None)
@@ -248,58 +281,59 @@ class UserActivity(models.Model):
 class TechAdmin(models.Model):
     """Тех адміністратори системи"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tech_admin')
-    is_active = models.BooleanField(default=True, help_text="Активний тех адміністратор")
+    is_active = models.BooleanField(default=True, help_text="Active tech admin")
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_tech_admins')
     
     class Meta:
-        verbose_name = "Тех адміністратор"
-        verbose_name_plural = "Тех адміністратори"
+        verbose_name = "Tech admin"
+        verbose_name_plural = "Tech admins"
 
     def __str__(self):
-        status = "Активний" if self.is_active else "Неактивний"
+        status = "Active" if self.is_active else "Inactive"
         return f"{self.user.username} ({status})"
 
 
 class SupportMessage(models.Model):
     """Модель повідомлень у технічну підтримку"""
     STATUS_CHOICES = [
-        ('new', 'Новий'),
-        ('in_progress', 'В процесі'),
-        ('resolved', 'Вирішено'),
-        ('closed', 'Закрито'),
+        ('new', 'New'),
+        ('in_progress', 'In progress'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
     ]
     
     PRIORITY_CHOICES = [
-        ('low', 'Низький'),
-        ('medium', 'Середній'),
-        ('high', 'Високий'),
-        ('urgent', 'Срочний'),
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_messages', null=True, blank=True)
-    subject = models.CharField(max_length=200, verbose_name="Тема")
-    message = models.TextField(verbose_name="Повідомлення")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', verbose_name="Статус")
-    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Приорітет")
+    subject = models.CharField(max_length=200, verbose_name="Subject")
+    message = models.TextField(verbose_name="Message")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new', verbose_name="Status")
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium', verbose_name="Priority")
 
-    # Інформація про проблему
-    problem_type = models.CharField(max_length=50, default='2fa_help', verbose_name="Тип проблеми")
+    # Problem info
+    problem_type = models.CharField(max_length=50, default='2fa_help', verbose_name="Problem type")
     user_agent = models.TextField(blank=True, null=True, verbose_name="User Agent")
-    ip_address = models.GenericIPAddressField(blank=True, null=True, verbose_name="IP адрес")
+    ip_address = models.GenericIPAddressField(blank=True, null=True, verbose_name="IP address")
 
-    # Дати
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Створено")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Оновлено")
-    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Вирішено")
+    # Dates
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created at")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Updated at")
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Resolved at")
+    was_resolved = models.BooleanField(default=False, verbose_name="Was resolved")
 
-    # Хто обробляє
-    assigned_to = models.ForeignKey(TechAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_messages', verbose_name="Призначено")
-    admin_notes = models.TextField(blank=True, null=True, verbose_name="Заметки адміністратора")
+    # Who processes
+    assigned_to = models.ForeignKey(TechAdmin, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_messages', verbose_name="Assigned to")
+    admin_notes = models.TextField(blank=True, null=True, verbose_name="Admin notes")
 
     class Meta:
-        verbose_name = "Повідомлення в підтримку"
-        verbose_name_plural = "Повідомлення в підтримку"
+        verbose_name = "Support message"
+        verbose_name_plural = "Support messages"
         ordering = ['-created_at']
         
     def __str__(self):
@@ -319,14 +353,14 @@ class PendingPasswordReset(models.Model):
     """Модель для відстеження очікуваних скидань пароля через Telegram"""
     telegram_id = models.CharField(max_length=50, verbose_name="Telegram ID")
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
-    new_password = models.CharField(max_length=255, blank=True, null=True, verbose_name="New Password")
+    new_password = models.CharField(max_length=255, blank=True, null=True, verbose_name="New password")
     is_confirmed = models.BooleanField(default=False, verbose_name="Confirmed")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created At")
-    expires_at = models.DateTimeField(verbose_name="Expires At")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Created at")
+    expires_at = models.DateTimeField(verbose_name="Expires at")
 
     class Meta:
-        verbose_name = "Password Reset"
-        verbose_name_plural = "Password Resets"
+        verbose_name = "Password reset"
+        verbose_name_plural = "Password resets"
 
     def __str__(self):
         return f"Password reset for {self.user.username} via Telegram"

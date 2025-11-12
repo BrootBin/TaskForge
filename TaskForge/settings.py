@@ -31,7 +31,13 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
+    '.railway.app',  # For Railway deployment
 ]
+
+# Add custom domain if you have one
+CUSTOM_DOMAIN = config('CUSTOM_DOMAIN', default='')
+if CUSTOM_DOMAIN:
+    ALLOWED_HOSTS.append(CUSTOM_DOMAIN)
 
 
 # Application definition
@@ -45,10 +51,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 	'main',
 	'channels',
+	'django_celery_results',
+	'django_celery_beat',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -69,6 +78,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'main.context_processors.user_tech_admin',
             ],
         },
     },
@@ -120,6 +130,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'main' / 'static']
+
+# WhiteNoise configuration for serving static files with Daphne
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -127,11 +142,42 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Broker settings for Celery
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+# Using PostgreSQL for everything (broker + results)
+# Perfect for Railway deployment - one database for all
+DATABASE_URL_RAW = config('DATABASE_URL', default='')
+if DATABASE_URL_RAW:
+    # Используем SQLAlchemy транспорт для Celery
+    CELERY_BROKER_URL = 'sqla+' + DATABASE_URL_RAW
+else:
+    # Fallback for local development without DATABASE_URL
+    CELERY_BROKER_URL = 'sqla+postgresql://postgres:postgres@localhost/taskforge'
+
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Kiev'
+CELERY_ENABLE_UTC = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# Django Channels configuration
+# For WebSocket support
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+# Note: For production on Railway, use Redis instead:
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [config('REDIS_URL', default='redis://localhost:6379')],
+#         },
+#     },
+# }
 
 # Telegram bot token
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN')

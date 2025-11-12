@@ -49,7 +49,7 @@
             {% if user_goals %}
                 <div class="goals-list">
                     {% for goal in user_goals %}
-                        <div class="goal-card {% if goal.completed %}completed{% endif %}" data-goal-id="{{ goal.id }}">
+                        <div id="goal-{{ goal.id }}" class="goal-card {% if goal.completed %}completed{% endif %}" data-goal-id="{{ goal.id }}">
                             <div class="goal-header">
                                 <h3>{{ goal.name }}</h3>
                                 <div class="goal-actions">
@@ -209,6 +209,8 @@
 </div>
 
 <!-- Підключаем JavaScript компонентів -->
+<script src="{% static 'js/components/modals/base-modal.js' %}"></script>
+<script src="{% static 'js/components/modals/dropdown-modal.js' %}"></script>
 <script src="{% static 'js/components/subgoal.js' %}"></script>
 
 <!-- Підключаем JavaScript сторінки цілей -->

@@ -9,10 +9,27 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.admin import AdminSite
 from .models import (
     Habit, HabitTemplate, Goal, GoalTemplate, SubGoal,
     Notification, TelegramProfile, SubGoalTemplate, TechAdmin, SupportMessage, PendingPasswordReset
 )
+
+# Кастомный AdminSite для разрешения доступа техадминам
+class TaskForgeAdminSite(AdminSite):
+    site_header = "TaskForge Administration"
+    site_title = "TaskForge Admin"
+    index_title = "Welcome to TaskForge Administration"
+    
+    def has_permission(self, request):
+        # Разрешаем доступ суперпользователям и техадминам
+        return request.user.is_active and (
+            request.user.is_superuser or 
+            (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
+        )
+
+# Создаем глобальный экземпляр кастомного админ сайта
+admin_site = TaskForgeAdminSite(name='taskforge_admin')
 
 # Форма для створення шаблону цілі з підцілями
 class GoalTemplateForm(forms.ModelForm):
@@ -186,56 +203,101 @@ class TechAdminUserAdmin(UserAdmin):
 # Админ для технических администраторов
 class TechAdminAdmin(admin.ModelAdmin):
     list_display = ('user', 'is_active', 'created_at', 'created_by')
-    list_filter = ('is_active', 'created_at')
+    list_filter = ('is_active', 'created_at', 'user__email')
     search_fields = ('user__username', 'user__email')
     readonly_fields = ('created_at',)
-    
+    autocomplete_fields = ['user']
+
     def save_model(self, request, obj, form, change):
-        if not change:  # Только при создании
+        if not change:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
-    
-    def has_module_permission(self, request):
-        # Только суперпользователи могут управлять техадминами
-        return request.user.is_superuser
 
-# Админ для сообщений поддержки
+    def has_module_permission(self, request):
+        return request.user.is_superuser or (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['user'].required = True
+        return form
+
 class SupportMessageAdmin(admin.ModelAdmin):
-    list_display = ('user', 'subject', 'status', 'priority', 'created_at', 'assigned_to')
+    list_display = ('user', 'subject', 'status', 'priority', 'created_at', 'assigned_to', 'was_resolved')
     list_filter = ('status', 'priority', 'problem_type', 'created_at')
     search_fields = ('user__username', 'subject', 'message')
     readonly_fields = ('created_at', 'updated_at', 'user_agent', 'ip_address')
     list_editable = ('status', 'priority')
-    
+    ordering = ['-priority', '-created_at']
+
     fieldsets = (
-        ('Основная информация', {
+        ('Main Info', {
             'fields': ('user', 'subject', 'message', 'status', 'priority')
         }),
-        ('Детали проблемы', {
+        ('Problem Details', {
             'fields': ('problem_type', 'user_agent', 'ip_address')
         }),
-        ('Обработка', {
-            'fields': ('assigned_to', 'admin_notes', 'resolved_at')
+        ('Processing', {
+            'fields': ('assigned_to', 'admin_notes', 'resolved_at', 'was_resolved')
         }),
-        ('Даты', {
+        ('Dates', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         })
     )
     
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser or (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
+
     def has_change_permission(self, request, obj=None):
         if request.user.is_superuser:
             return True
         return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
-    
+
     def has_delete_permission(self, request, obj=None):
         if request.user.is_superuser:
             return True
         return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
-    
+
     def has_add_permission(self, request):
-        # Сообщения создаются только через интерфейс пользователя
         return False
+    
+    def get_queryset(self, request):
+        """Тех-админ видит тикеты, кроме was_resolved=True"""
+        from django.db.models import Q
+        from django.utils import timezone
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        if hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active:
+            tech_admin = request.user.tech_admin
+            now = timezone.now()
+            queryset = queryset.filter(
+                Q(assigned_to=tech_admin) | Q(status__in=['new', 'in_progress', 'resolved', 'closed'])
+            ).exclude(resolved_at__gt=now).exclude(was_resolved=True)
+        return queryset
+    
+    def save_model(self, request, obj, form, change):
+        from django.utils import timezone
+        now = timezone.now()
+        error = None
+        # Если техадмин не назначен, назначаем текущего пользователя если это техадмин
+        if not obj.assigned_to and not request.user.is_superuser:
+            if hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active:
+                obj.assigned_to = request.user.tech_admin
+        # Если проблема с TelegramProfile, выставляем средний приоритет
+        if obj.problem_type == 'telegram_profile':
+            obj.priority = 'medium'
+        # Проверка: нельзя ставить дату выполнения из будущего
+        if obj.resolved_at and obj.resolved_at > now:
+            error = "Resolved date cannot be in the future."
+        # Проверка: нельзя поставить was_resolved=True если resolved_at не заполнено
+        if obj.was_resolved and not obj.resolved_at:
+            error = "You must set 'Resolved At' before marking as resolved."
+        if error:
+            self.message_user(request, error, level='error')
+            return
+        super().save_model(request, obj, form, change)
 
 # Ограниченный админ для TelegramProfile (для техадминов)
 class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
@@ -243,12 +305,15 @@ class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
     list_filter = ('connected', 'notifications_enabled', 'two_factor_enabled')
     search_fields = ('user__username', 'telegram_id')
     
+    def has_module_permission(self, request):
+        return request.user.is_superuser or (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
+
     def has_add_permission(self, request):
         return request.user.is_superuser
-    
+
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
-    
+        return request.user.is_superuser or (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
+
     def has_change_permission(self, request, obj=None):
         if request.user.is_superuser:
             return True
@@ -258,24 +323,26 @@ class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
 # Снимаем стандартную регистрацию User
 admin.site.unregister(User)
 
-# Регистрируем с кастомным админом
-admin.site.register(User, TechAdminUserAdmin)
+# Регистрируем с кастомным админом на кастомном сайте
+admin_site.register(User, TechAdminUserAdmin)
 
-# Реєструємо моделі з адміністративними класами
-admin.site.register(HabitTemplate, HabitTemplateAdmin)
-admin.site.register(GoalTemplate, GoalTemplateAdmin)
-admin.site.register(SubGoalTemplate, SubGoalTemplateAdmin)
-admin.site.register(Notification)
-admin.site.register(Habit)
-admin.site.register(Goal)
+# Реєструємо моделі з адміністративними класами на кастомном сайте
+admin_site.register(HabitTemplate, HabitTemplateAdmin)
+admin_site.register(GoalTemplate, GoalTemplateAdmin)
+admin_site.register(SubGoalTemplate, SubGoalTemplateAdmin)
+admin_site.register(Notification)
+admin_site.register(Habit)
+admin_site.register(Goal)
 
 # Новые модели для техподдержки
-admin.site.register(TechAdmin, TechAdminAdmin)
-admin.site.register(SupportMessage, SupportMessageAdmin)
+admin_site.register(TechAdmin, TechAdminAdmin)
+admin_site.register(SupportMessage, SupportMessageAdmin)
 
 # Password reset admin
-@admin.register(PendingPasswordReset)
+
 class PendingPasswordResetAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser or (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
     list_display = ('user', 'telegram_id', 'is_confirmed', 'created_at', 'expires_at', 'is_expired_display')
     list_filter = ('is_confirmed', 'created_at', 'expires_at')
     search_fields = ('user__username', 'telegram_id')
@@ -283,16 +350,18 @@ class PendingPasswordResetAdmin(admin.ModelAdmin):
     
     def is_expired_display(self, obj):
         return obj.is_expired()
-    is_expired_display.short_description = 'Истекший'
+    is_expired_display.short_description = 'Expired'
     is_expired_display.boolean = True
-    
+
     actions = ['cleanup_expired_resets']
-    
+
     def cleanup_expired_resets(self, request, queryset):
         count = PendingPasswordReset.cleanup_expired()
-        self.message_user(request, f'Удалено {count} истекших запросов на сброс пароля.')
-    cleanup_expired_resets.short_description = 'Очистить истекшие запросы'
+        self.message_user(request, f'Removed {count} expired password reset requests.')
+    cleanup_expired_resets.short_description = 'Clear expired requests'
+
+admin_site.register(PendingPasswordReset, PendingPasswordResetAdmin)
 
 # Регистрируем TelegramProfile с ограниченными правами
-admin.site.register(TelegramProfile, TechAdminTelegramProfileAdmin)
+admin_site.register(TelegramProfile, TechAdminTelegramProfileAdmin)
 

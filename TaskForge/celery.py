@@ -10,16 +10,24 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    'habit-notifications-every-30-minutes': {
+    # Напоминания о streak каждые 5 минут (проверяет нужен ли reminder)
+    'check-streak-reminders-every-5-minutes': {
         'task': 'main.tasks.generate_habit_notifications',
-        'schedule': 1800.0,
+        'schedule': 300.0,  # Каждые 5 минут
     },
+    # Проверка потерянных streak в начале дня (00:05)
+    'check-broken-streaks-daily': {
+        'task': 'main.tasks.check_and_notify_broken_streaks',
+        'schedule': crontab(hour=0, minute=5),  # В 00:05 каждый день
+    },
+    # Сброс недельной активности каждый понедельник
     'reset-weekly-activity': {
-        'task': 'main.tasks.reset_weekly_activity',
-        'schedule': crontab(hour=0, minute=0, day_of_week=1),  # Кожен понеділок в 00:00
+        'task': 'main.tasks.reset_daily_activity',
+        'schedule': crontab(hour=0, minute=0, day_of_week=1),  # Понедельник в 00:00
     },
+    # Очистка истекших запросов на сброс пароля каждый час
     'cleanup-expired-password-resets': {
         'task': 'main.tasks.cleanup_expired_password_resets',
-        'schedule': crontab(minute=0),  # Кожну годину
+        'schedule': crontab(minute=0),  # Каждый час
     },
 }
