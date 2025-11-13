@@ -501,30 +501,68 @@
 
 	.stats-grid {
 		grid-template-columns: 1fr;
-		gap: 1rem;
+		gap: 0.875rem;
 	}
 
 	.stat-card {
-		padding: 1.25rem;
-		gap: 1rem;
+		padding: 0.875rem 1rem;
+		gap: 0.75rem;
+		border-radius: 14px;
+	}
+
+	.stat-card::before {
+		height: 2.5px;
 	}
 
 	.stat-icon {
-		width: 50px;
-		height: 50px;
-		font-size: 1.5rem;
+		width: 48px;
+		height: 48px;
+		font-size: 1.4rem;
+		border-radius: 10px;
 	}
 
 	.stat-number {
-		font-size: 2rem;
+		font-size: 1.85rem;
 	}
 
 	.stat-label {
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 	}
 
 	.stat-detail {
+		font-size: 0.75rem;
+	}
+
+	.progress-ring {
+		width: 54px;
+		height: 54px;
+	}
+
+	.progress-ring svg {
+		width: 54px;
+		height: 54px;
+	}
+
+	.progress-ring-circle-bg {
+		cx: 27;
+		cy: 27;
+		r: 24;
+	}
+
+	.progress-ring-circle {
+		cx: 27;
+		cy: 27;
+		r: 24;
+	}
+
+	.progress-text {
 		font-size: 0.8rem;
+	}
+
+	.stat-badge {
+		width: 46px;
+		height: 46px;
+		font-size: 1.35rem;
 	}
 
 	.charts-section {
@@ -601,50 +639,69 @@
 	}
 
 	.stats-grid {
-		gap: 0.875rem;
+		gap: 0.75rem;
 	}
 
 	.stat-card {
-		padding: 1rem;
-		gap: 0.875rem;
+		padding: 0.75rem 0.875rem;
+		gap: 0.625rem;
+		border-radius: 12px;
+	}
+
+	.stat-card::before {
+		height: 2px;
 	}
 
 	.stat-icon {
-		width: 45px;
-		height: 45px;
-		font-size: 1.3rem;
+		width: 42px;
+		height: 42px;
+		font-size: 1.2rem;
+		border-radius: 9px;
 	}
 
 	.stat-number {
-		font-size: 1.8rem;
+		font-size: 1.65rem;
 	}
 
 	.stat-label {
-		font-size: 0.85rem;
+		font-size: 0.8rem;
+		margin-bottom: 0.2rem;
 	}
 
 	.stat-detail {
-		font-size: 0.75rem;
+		font-size: 0.7rem;
 	}
 
 	.progress-ring {
-		width: 55px;
-		height: 55px;
+		width: 50px;
+		height: 50px;
 	}
 
 	.progress-ring svg {
-		width: 55px;
-		height: 55px;
+		width: 50px;
+		height: 50px;
+	}
+
+	.progress-ring-circle-bg {
+		cx: 25;
+		cy: 25;
+		r: 22;
+	}
+
+	.progress-ring-circle {
+		cx: 25;
+		cy: 25;
+		r: 22;
 	}
 
 	.progress-text {
-		font-size: 0.85rem;
+		font-size: 0.75rem;
 	}
 
 	.stat-badge {
-		width: 45px;
-		height: 45px;
-		font-size: 1.3rem;
+		width: 40px;
+		height: 40px;
+		font-size: 1.2rem;
 	}
 
 	.charts-section {
@@ -741,24 +798,72 @@
 	}
 
 	.stats-grid {
-		gap: 0.75rem;
+		gap: 0.625rem;
 	}
 
 	.stat-card {
-		padding: 0.875rem;
-		gap: 0.75rem;
-		border-radius: 12px;
-	}
-
-	.stat-icon {
-		width: 40px;
-		height: 40px;
-		font-size: 1.2rem;
+		padding: 0.625rem 0.75rem;
+		gap: 0.5rem;
 		border-radius: 10px;
 	}
 
+	.stat-card::before {
+		height: 2px;
+	}
+
+	.stat-icon {
+		width: 38px;
+		height: 38px;
+		font-size: 1.1rem;
+		border-radius: 8px;
+	}
+
 	.stat-number {
-		font-size: 1.6rem;
+		font-size: 1.5rem;
+		margin-bottom: 0.2rem;
+	}
+
+	.stat-label {
+		font-size: 0.75rem;
+		margin-bottom: 0.15rem;
+	}
+
+	.stat-detail {
+		font-size: 0.65rem;
+		line-height: 1.3;
+	}
+
+	.progress-ring {
+		width: 46px;
+		height: 46px;
+	}
+
+	.progress-ring svg {
+		width: 46px;
+		height: 46px;
+	}
+
+	.progress-ring-circle-bg {
+		cx: 23;
+		cy: 23;
+		r: 20;
+	}
+
+	.progress-ring-circle {
+		cx: 23;
+		cy: 23;
+		r: 20;
+	}
+
+	.progress-text {
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.stat-badge {
+		width: 36px;
+		height: 36px;
+		font-size: 1.1rem;
 	}
 
 	.stat-label {
