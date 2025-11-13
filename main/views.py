@@ -549,15 +549,6 @@ def test_telegram_update(request):
         }, status=500)
 
 
-@login_required
-def notifications_api(request):
-    notifications = Notification.objects.filter(user=request.user, read=False)
-    data = [
-        {"id": n.id, "message": n.message, "created_at": n.created_at.isoformat()}
-        for n in notifications
-    ]
-    return JsonResponse({"notifications": data})
-
 def latest_notifications(request):
     if not request.user.is_authenticated:
         return JsonResponse({'notifications': []})
@@ -581,22 +572,6 @@ def unread_notifications_count(request):
     print(f"📊 Unread notifications for {request.user.username}: {count}")
     return JsonResponse({'count': count})
 
-@login_required
-@login_required
-def generate_telegram_code(request):
-    profile, _ = TelegramProfile.objects.get_or_create(user=request.user)
-    
-    # Перевіряємо, чи вже підключений акаунт Telegram
-    if profile.connected and profile.telegram_id:
-        return JsonResponse({
-            "status": "already_connected",
-            "message": "Your Telegram account is already linked."
-        })
-    
-    profile.bind_code = f"{random.randint(100000, 999999)}"
-    profile.save()
-    return JsonResponse({"code": profile.bind_code, "status": "ok"})
-
 @csrf_exempt
 def bind_telegram(request):
     if request.method == "POST":
@@ -608,7 +583,7 @@ def bind_telegram(request):
                 bind_code = data.get("bind_code")
                 telegram_id = data.get("telegram_id")
             except Exception:
-                return JsonResponse({"status": "error", "msg": "Invalid data"})
+                pass
         if not bind_code or not telegram_id:
             return JsonResponse({"status": "error", "msg": "Missing code or telegram_id"})
         try:
@@ -654,9 +629,16 @@ def check_telegram(request):
     return JsonResponse({'linked': linked, 'username': username})
 
 
-@login_required
 def check_telegram_status(request):
     """API для перевірки статусу підключення Telegram"""
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'connected': False,
+            'notify_enabled': False,
+            'two_factor_enabled': False,
+            'bind_code': None
+        })
+    
     profile = getattr(request.user, 'telegram_profile', None)
     
     # Спрощуємо: перевіряємо тільки чи підключений профіль
@@ -773,8 +755,7 @@ def use_goal_template(request):
         
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    
-    
+
 @login_required
 @require_POST
 def create_custom_habit(request):
@@ -812,8 +793,7 @@ def create_custom_habit(request):
         
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    
-    
+
 @login_required
 @require_POST
 def create_custom_goal(request):
@@ -965,8 +945,6 @@ def get_goal_template(request):
         })
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
     
 @login_required
 @require_POST
@@ -1089,7 +1067,6 @@ def delete_habit(request):
     if not request.user.is_authenticated:
         return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
     try:
-        import json
         data = json.loads(request.body)
         habit_id = data.get('habit_id')
         
@@ -1118,7 +1095,6 @@ def toggle_habit_active(request):
     if not request.user.is_authenticated:
         return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
     try:
-        import json
         data = json.loads(request.body)
         habit_id = data.get('habit_id')
         
@@ -1150,7 +1126,6 @@ def habit_checkin(request):
     if not request.user.is_authenticated:
         return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
     try:
-        import json
         from datetime import date, timedelta
         from .models import Habit, HabitCheckin
         
@@ -1366,7 +1341,6 @@ def send_support_message(request):
         return JsonResponse({"status": "error", "message": "Only POST method allowed"}, status=405)
     
     try:
-        import json
         from .models import SupportMessage
         
         # Получаем данные из запроса
@@ -1767,7 +1741,6 @@ def mark_notification_read(request):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
     
-    import json
     try:
         data = json.loads(request.body)
         notification_id = data.get('notification_id')

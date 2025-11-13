@@ -5,7 +5,8 @@
 (function () {
 	'use strict';
 
-	let notificationSocket = null;
+	// Экспортируем в window для доступа из debug.js
+	window.notificationSocket = null;
 	let reconnectAttempts = 0;
 	const MAX_RECONNECT_ATTEMPTS = 5;
 	const RECONNECT_DELAY = 3000;
@@ -26,14 +27,14 @@
 		console.log('🔌 Connecting to WebSocket:', wsUrl);
 
 		try {
-			notificationSocket = new WebSocket(wsUrl);
+			window.notificationSocket = new WebSocket(wsUrl);
 
-			notificationSocket.onopen = function (e) {
+			window.notificationSocket.onopen = function (e) {
 				console.log('✅ WebSocket connected');
 				reconnectAttempts = 0;
 			};
 
-			notificationSocket.onmessage = function (e) {
+			window.notificationSocket.onmessage = function (e) {
 				const data = JSON.parse(e.data);
 				console.log('📨 WebSocket message received:', data);
 
@@ -48,13 +49,13 @@
 
 					console.log('🔔 Notification received, list refreshed from API');
 				}
-			}; notificationSocket.onerror = function (error) {
+			}; window.notificationSocket.onerror = function (error) {
 				console.error('❌ WebSocket error:', error);
 			};
 
-			notificationSocket.onclose = function (e) {
+			window.notificationSocket.onclose = function (e) {
 				console.log('🔌 WebSocket disconnected:', e.code, e.reason);
-				notificationSocket = null;
+				window.notificationSocket = null;
 
 				// Попытка переподключения
 				if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -74,9 +75,9 @@
 	 * Отключение от WebSocket
 	 */
 	function disconnectNotificationWebSocket() {
-		if (notificationSocket) {
-			notificationSocket.close();
-			notificationSocket = null;
+		if (window.notificationSocket) {
+			window.notificationSocket.close();
+			window.notificationSocket = null;
 		}
 	}
 
@@ -139,24 +140,6 @@
 			console.log('📊 Updating notification badge...');
 			updateNotificationBadge();
 		}, 350); // Даем время на завершение анимации
-	}
-
-	/**
-	 * Получает CSRF токен из cookie
-	 */
-	function getCookie(name) {
-		let cookieValue = null;
-		if (document.cookie && document.cookie !== '') {
-			const cookies = document.cookie.split(';');
-			for (let i = 0; i < cookies.length; i++) {
-				const cookie = cookies[i].trim();
-				if (cookie.substring(0, name.length + 1) === (name + '=')) {
-					cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-					break;
-				}
-			}
-		}
-		return cookieValue;
 	}
 
 	/**
@@ -230,9 +213,6 @@
 			})
 			.catch(error => console.error('❌ Error fetching unread count:', error));
 	}
-
-	// Экспортируем функцию обновления индикатора
-	window.updateNotificationBadge = updateNotificationBadge;
 
 	// Обновляем индикатор при загрузке страницы
 	if (document.readyState === 'loading') {

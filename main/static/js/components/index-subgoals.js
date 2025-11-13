@@ -4,8 +4,16 @@
  */
 
 // Глобальные переменные для управления автоматическим перемещением подцелей
-const autoReplaceTimers = new Map(); // Хранит таймеры для автоперемещения
-const REPLACE_DELAY = 5000; // 5 секунд задержки
+// Защита от повторной инициализации
+if (!window.autoReplaceTimers) {
+	window.autoReplaceTimers = new Map(); // Хранит таймеры для автоперемещения
+}
+if (!window.REPLACE_DELAY) {
+	window.REPLACE_DELAY = 5000; // 5 секунд задержки
+}
+
+const autoReplaceTimers = window.autoReplaceTimers;
+const REPLACE_DELAY = window.REPLACE_DELAY;
 
 // Функция для автоматического перемещения выполненной подцели вниз
 function scheduleAutoReplace(completedSubgoalElement, goalCard) {

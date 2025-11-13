@@ -6,7 +6,7 @@
 /* Футер */
 footer {
 	width: calc(90% - 40px);
-	margin: 0px auto 0 auto;
+	margin: 0px auto  20px auto;
 	padding: 10px 20px;
 	background-color: var(--bg-main);
 	border-bottom-left-radius: var(--border-radius-lg);

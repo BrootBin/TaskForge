@@ -59,8 +59,7 @@
 
 /* === Кнопки помощи в модалке авторизации === */
 .auth-help-section {
-	margin-top: 15px;
-	padding-top: 15px;
+	margin-top: 5px;
 	border-top: 1px solid var(--border-color);
 	text-align: center;
 }
@@ -86,6 +85,36 @@
 
 .help-link i {
 	font-size: 16px;
+}
+
+/* === Стили для ссылок Sign in/Sign up === */
+#show-register,
+#show-login {
+	color: var(--text-primary);
+	text-decoration: none;
+	border-bottom: 2px solid var(--primary);
+	padding-bottom: 2px;
+	transition: all 0.3s ease;
+	font-weight: 500;
+}
+
+#show-register:hover,
+#show-login:hover {
+	color: var(--text-primary);
+	border-bottom-color: var(--primary-hover);
+	text-decoration: none;
+}
+
+#show-register:visited,
+#show-login:visited {
+	color: var(--text-primary);
+	border-bottom-color: var(--primary);
+}
+
+#show-register:active,
+#show-login:active {
+	color: var(--text-primary);
+	border-bottom-color: var(--primary);
 }
 
 /* === Модальное окно создания цели/привычки === */
@@ -940,21 +969,41 @@
 #support-modal .form-group input {
 	width: 100%;
 	padding: 12px;
-	border: 1px solid var(--border-color);
-	border-radius: var(--border-radius-md);
+	border: 2px solid var(--primary);
+	border-radius: 12px;
 	background-color: var(--bg-secondary);
 	color: var(--text-primary);
 	font-size: 14px;
-	transition: border-color 0.2s ease;
+	transition: all 0.3s ease;
 	box-sizing: border-box;
+	position: relative;
 }
 
 #support-modal .form-group select:focus,
 #support-modal .form-group textarea:focus,
 #support-modal .form-group input:focus {
 	outline: none;
-	border-color: var(--primary);
-	box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+	box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+	background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+		repeating-linear-gradient(90deg,
+			var(--primary) 0px,
+			var(--primary) 20px,
+			#2c2c2c 20px,
+			#2c2c2c 40px) border-box;
+	border: 3px solid transparent;
+	animation: border-move 1.5s linear infinite;
+	background-size: 200% 100%;
+}
+
+/* Анимация движущихся золотых полос по контуру */
+@keyframes border-move {
+	0% {
+		background-position: 0% 0%;
+	}
+
+	100% {
+		background-position: 200% 0%;
+	}
 }
 
 #support-modal .form-group .form-help {

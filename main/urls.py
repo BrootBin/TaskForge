@@ -14,10 +14,12 @@ urlpatterns = [
 
 	# API для сповіщень та Telegram
 	path('api/notifications/latest/', views.latest_notifications, name='latest_notifications'),
+	path('bind_telegram/', views.bind_telegram, name='bind_telegram'),
+	
+   #API для сповіщень на сторінці
 	path('api/notifications/unread-count/', views.unread_notifications_count, name='unread_notifications_count'),
 	path('api/notifications/mark-read/', views.mark_notification_read, name='mark_notification_read'),
-	path('bind_telegram/', views.bind_telegram, name='bind_telegram'),
-
+	
 	# API для управління Telegram
 	path('api/tg_notify_toggle/', views.tg_notify_toggle, name='tg_notify_toggle'),
    path('api/check_telegram/', views.check_telegram, name='check_telegram'),

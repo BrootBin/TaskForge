@@ -72,7 +72,6 @@ header.nav-bar.has-admin-btn .nav-links ul {
 .profile-icon {
 	padding-top: 10px;
 	font-size: 24px;
-	margin-left: 20px;
 	cursor: pointer;
 	color: var(--primary);
 }
@@ -81,7 +80,6 @@ header.nav-bar.has-admin-btn .nav-links ul {
 .admin-link {
 	display: flex;
 	align-items: center;
-	margin-left: 20px;
 	padding-top: 10px;
 }
 

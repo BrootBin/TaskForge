@@ -26,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
@@ -38,6 +38,21 @@ ALLOWED_HOSTS = [
 CUSTOM_DOMAIN = config('CUSTOM_DOMAIN', default='')
 if CUSTOM_DOMAIN:
     ALLOWED_HOSTS.append(CUSTOM_DOMAIN)
+
+# CSRF settings for production
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+]
+if CUSTOM_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{CUSTOM_DOMAIN}')
+
+# Security settings for production
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 
 # Application definition
@@ -142,15 +157,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Broker settings for Celery
-# Using PostgreSQL for everything (broker + results)
-# Perfect for Railway deployment - one database for all
-DATABASE_URL_RAW = config('DATABASE_URL', default='')
-if DATABASE_URL_RAW:
-    # Используем SQLAlchemy транспорт для Celery
-    CELERY_BROKER_URL = 'sqla+' + DATABASE_URL_RAW
+# Using Redis for broker (recommended for production)
+# Using PostgreSQL for results (django-db backend)
+REDIS_URL = config('REDIS_URL', default=None)
+
+if REDIS_URL:
+    # Production: Redis for broker (faster and more reliable)
+    CELERY_BROKER_URL = REDIS_URL
 else:
-    # Fallback for local development without DATABASE_URL
-    CELERY_BROKER_URL = 'sqla+postgresql://postgres:postgres@localhost/taskforge'
+    # Development fallback: use SQLAlchemy with PostgreSQL
+    DATABASE_URL_RAW = config('DATABASE_URL', default='postgresql://postgres:postgres@localhost/taskforge')
+    CELERY_BROKER_URL = 'sqla+' + DATABASE_URL_RAW
 
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
@@ -163,21 +180,25 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Django Channels configuration
 # For WebSocket support
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
-    }
-}
+REDIS_URL = config('REDIS_URL', default=None)
 
-# Note: For production on Railway, use Redis instead:
-# CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",
-#         "CONFIG": {
-#             "hosts": [config('REDIS_URL', default='redis://localhost:6379')],
-#         },
-#     },
-# }
+if REDIS_URL:
+    # Production: use Redis for multi-process WebSocket support
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [REDIS_URL],
+            },
+        },
+    }
+else:
+    # Development: use InMemory (single process only)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        }
+    }
 
 # Telegram bot token
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN')

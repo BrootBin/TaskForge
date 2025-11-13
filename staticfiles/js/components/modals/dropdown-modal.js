@@ -3,19 +3,44 @@ console.log('🔔 Dropdown loaded');
 window.NotificationsDropdown = {
 	pollingInterval: null,
 	lastUnreadCount: 0,
+	isActiveHours: false,
 
 	init: function () {
 		this.initDropdownMenus();
 		this.startPolling();
 	},
 
+	// Проверяем активное время: 21:00-00:01
+	checkActiveHours: function () {
+		const now = new Date();
+		const hour = now.getHours();
+		const minute = now.getMinutes();
+
+		// Активно с 21:00 до 00:01 (21:00-23:59 и 00:00-00:01)
+		const isActive = (hour >= 21) || (hour === 0 && minute <= 1);
+
+		if (isActive !== this.isActiveHours) {
+			this.isActiveHours = isActive;
+			if (isActive) {
+				console.log('🌙 Active hours started (21:00-00:01) - polling enabled');
+			} else {
+				console.log('☀️ Outside active hours - polling disabled');
+			}
+		}
+
+		return isActive;
+	},
+
 	startPolling: function () {
-		// Проверяем новые уведомления каждые 5 секунд
+		// Проверяем новые уведомления каждые 60 секунд (только в активное время)
 		const self = this;
 		this.pollingInterval = setInterval(function () {
-			self.checkForNewNotifications();
-		}, 5000);
-		console.log('🔄 Polling started (every 5 seconds)');
+			// Проверяем только если сейчас активное время
+			if (self.checkActiveHours()) {
+				self.checkForNewNotifications();
+			}
+		}, 60000);
+		console.log('🔄 Polling started (every 60 seconds, active 21:00-00:01)');
 	},
 
 	checkForNewNotifications: function () {
@@ -44,9 +69,28 @@ window.NotificationsDropdown = {
 		})
 			.then(r => r.json())
 			.then(d => {
-				if (d.success) {
+				if (d.status === 'success') {
+					console.log(`✅ Notification ${id} marked as read`);
+
+					// Обновляем атрибут
 					elem.setAttribute('data-read', 'true');
-					elem.style.opacity = '0.6';
+
+					// Затемняем уведомление
+					elem.style.opacity = '0.4';
+
+					// Удаляем зелёный кружок индикатора
+					const indicator = elem.querySelector('.unread-indicator');
+					if (indicator) {
+						indicator.style.transition = 'opacity 0.3s, transform 0.3s';
+						indicator.style.opacity = '0';
+						indicator.style.transform = 'scale(0)';
+						setTimeout(() => {
+							indicator.remove();
+						}, 300);
+					}
+
+					// Обновляем badge
+					this.updateBadge();
 				}
 			})
 			.catch(e => console.error('❌ Mark read error:', e));
@@ -80,12 +124,25 @@ window.NotificationsDropdown = {
 						item.setAttribute('data-notification-id', n.id);
 						item.setAttribute('data-read', n.read ? 'true' : 'false');
 						if (n.read) item.style.opacity = '0.6';
+
 						const date = new Date(n.created_at);
 						const formatted = date.toLocaleString('uk-UA', {
 							day: '2-digit', month: '2-digit', year: 'numeric',
 							hour: '2-digit', minute: '2-digit'
 						});
-						item.innerHTML = '<div class="notification-content"><p class="notification-text">' + n.message + '</p><span class="notification-time">' + formatted + '</span></div>';
+
+						// Создаем структуру с кружком для непрочитанных
+						const contentHTML = `
+							<div class="notification-content" style="display: flex; align-items: flex-start; gap: 10px;">
+								${!n.read ? '<span class="unread-indicator" style="margin-top: 5px;"></span>' : ''}
+								<div style="flex: 1;">
+									<p class="notification-text" style="margin: 0 0 5px 0;">${n.message}</p>
+									<span class="notification-time" style="font-size: 12px; color: #888;">${formatted}</span>
+								</div>
+							</div>
+						`;
+
+						item.innerHTML = contentHTML;
 						item.addEventListener('click', function () {
 							if (this.getAttribute('data-read') === 'false') {
 								self.markAsRead(n.id, this);
