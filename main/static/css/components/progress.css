@@ -119,18 +119,26 @@
 	.monthly-progress-container {
 		width: 80px;
 		height: 80px;
-		margin-right: 0;
-		margin-top: 10px;
+		margin: 0 auto 15px auto;
 		float: none;
 		position: relative;
+		display: block;
+		order: -1;
 	}
 
 	.welcome-section .monthly-progress-container {
 		position: relative;
 		top: auto;
 		right: auto;
-		margin: 15px auto;
+		margin: 0 auto 15px auto;
 		display: block;
+		order: -1;
+	}
+
+	/* Контейнер welcome-section должен быть flex */
+	.welcome-section {
+		display: flex;
+		flex-direction: column;
 	}
 
 	.monthly-progress-container .progress-text {
