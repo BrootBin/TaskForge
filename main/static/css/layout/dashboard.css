@@ -6,7 +6,7 @@
 /* === Привітальний розділ === */
 .welcome-section {
 	display: flex;
-	flex-wrap: nowrap;
+	flex-wrap: wrap;
 	justify-content: space-between;
 	align-items: flex-start;
 	gap: 20px;
@@ -16,7 +16,7 @@
 
 .welcome-text-container {
 	flex: 1;
-	max-width: 65%;
+	min-width: 300px;
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
@@ -95,9 +95,45 @@
 	.welcome-section {
 		flex-direction: column;
 		align-items: center;
+		text-align: center;
 	}
 
 	.welcome-text-container {
 		max-width: 100%;
+		align-items: center;
+		position: relative;
+	}
+
+	.welcome {
+		font-size: 29px;
+	}
+
+	.welcome_text {
+		font-size: 14px;
+	}
+
+	.create-goal-btn {
+		width: 100%;
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		position: relative;
+		gap: 15px;
+	}
+}
+
+/* === Медіа-запити для дуже маленьких екранів === */
+@media (max-width: 380px) {
+	.welcome {
+		font-size: 27px;
+	}
+
+	.welcome_text {
+		font-size: 13px;
+	}
+
+	.monthly-progress-container {
+		width: 50px;
+		height: 50px;
 	}
 }

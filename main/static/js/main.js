@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', function () {
 		navbar.classList.add('has-admin-btn');
 	}
 
+	// Переміщення прогрес-кола на мобільних
+	repositionProgressCircle();
+
 	// Ініціалізація глобальних утиліт
 	initGlobalUtils();
 
@@ -133,4 +136,35 @@ function initGlobalUtils() {
 			console.warn('⚠️ showNotification not available yet');
 		}
 	};
+}
+
+/**
+ * Переміщення прогрес-кола на мобільних пристроях
+ */
+function repositionProgressCircle() {
+	const progressContainer = document.querySelector('.monthly-progress-container');
+	const createBtn = document.querySelector('.create-goal-btn');
+	const welcomeTextContainer = document.querySelector('.welcome-text-container');
+
+	if (!progressContainer || !createBtn || !welcomeTextContainer) return;
+
+	function moveCircle() {
+		if (window.innerWidth <= 768) {
+			// На мобільних: переміщуємо в create-goal-btn
+			if (progressContainer.parentElement !== createBtn) {
+				createBtn.appendChild(progressContainer);
+			}
+		} else {
+			// На десктопі: повертаємо в welcome-text-container
+			if (progressContainer.parentElement !== welcomeTextContainer) {
+				welcomeTextContainer.appendChild(progressContainer);
+			}
+		}
+	}
+
+	// Виконуємо при завантаженні
+	moveCircle();
+
+	// Виконуємо при зміні розміру вікна
+	window.addEventListener('resize', moveCircle);
 }
