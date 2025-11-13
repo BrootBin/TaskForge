@@ -126,12 +126,17 @@
 	justify-content: space-between;
 	align-items: flex-start;
 	margin-bottom: 10px;
+	gap: 12px;
 }
 
 .goal-header h3 {
 	color: var(--text-primary);
 	margin: 0;
 	font-size: 1.2rem;
+	flex: 1;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	max-width: calc(100% - 50px);
 }
 
 .goal-actions {
@@ -164,6 +169,7 @@
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 8px;
+	gap: 12px;
 }
 
 .progress-header span {
@@ -174,6 +180,8 @@
 .progress-percent {
 	font-weight: 600;
 	color: var(--primary) !important;
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .progress-bar {
@@ -639,26 +647,70 @@
 	.goal-templates-section {
 		padding: 20px;
 	}
+
+	.goal-header h3 {
+		font-size: 1.1rem;
+	}
+
+	.progress-header {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.progress-header span:first-child {
+		flex-basis: 100%;
+	}
+
+	.progress-percent {
+		align-self: flex-start;
+	}
+}
+
+@media (max-width: 375px) {
+	.goal-card {
+		padding: 12px;
+	}
+
+	.goal-header {
+		gap: 8px;
+	}
+
+	.goal-header h3 {
+		font-size: 1rem;
+	}
+
+	.progress-header {
+		gap: 6px;
+	}
+
+	.progress-header span {
+		font-size: 0.85rem;
+	}
+
+	.stat-number {
+		font-size: 1.3rem;
+	}
 }
 
 /* === ������������������ �������� ������ ���������������� ���� ���������� === */
 html {
-scroll-behavior: smooth;
+	scroll-behavior: smooth;
 }
 
 .goal-card:target {
-animation: highlightGoal 2s ease-in-out;
+	animation: highlightGoal 2s ease-in-out;
 }
 
 @keyframes highlightGoal {
-0% {
-background: rgba(212, 175, 55, 0.3);
-border-color: rgba(212, 175, 55, 0.8);
-box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
-}
-100% {
-background: rgba(212, 175, 55, 0.05);
-border-color: rgba(212, 175, 55, 0.2);
-box-shadow: none;
-}
+	0% {
+		background: rgba(212, 175, 55, 0.3);
+		border-color: rgba(212, 175, 55, 0.8);
+		box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+	}
+
+	100% {
+		background: rgba(212, 175, 55, 0.05);
+		border-color: rgba(212, 175, 55, 0.2);
+		box-shadow: none;
+	}
 }

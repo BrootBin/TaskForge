@@ -249,7 +249,7 @@ def generate_habit_notifications():
         
         # Проверяем настройки Telegram
         profile = getattr(user, 'telegram_profile', None)
-        send_telegram = (profile and profile.connected and 
+        send_telegram = bool(profile and profile.connected and 
                         profile.telegram_id and profile.notifications_enabled)
         
         # Формируем сообщение на английском (как в Duolingo)

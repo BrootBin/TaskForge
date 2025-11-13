@@ -18,10 +18,10 @@ class TelegramProfile(models.Model):
 
 class Habit(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='habits')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
     streak_days = models.IntegerField(default=0)
-    max_streak_days = models.IntegerField(default=0)  # Максимальный streak за всё время
+    max_streak_days = models.IntegerField(default=0)
     last_checkin = models.DateField(null=True, blank=True)
     frequency = models.CharField(
         max_length=20,
@@ -104,7 +104,7 @@ class HabitCheckin(models.Model):
         
 
 class HabitTemplate(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
     frequency = models.CharField(
         max_length=20,
@@ -117,7 +117,7 @@ class HabitTemplate(models.Model):
 
 class Goal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goals')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
     deadline = models.DateField(null=True, blank=True)
     completed = models.BooleanField(default=False)
@@ -142,14 +142,14 @@ class Goal(models.Model):
 
 class SubGoal(models.Model):
     goal = models.ForeignKey(Goal, on_delete=models.CASCADE, related_name='subgoals')
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
     completed = models.BooleanField(default=False)
     notify_before_days = models.IntegerField(default=1)
 
     
 
 class GoalTemplate(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=50)
     description = models.TextField(blank=True)
 
     def __str__(self):
