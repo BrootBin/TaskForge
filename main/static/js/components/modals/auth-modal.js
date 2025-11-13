@@ -21,7 +21,31 @@ function initAuthModals() {
 	// Инициализируем обработчики уведомлений
 	initNotificationsHandlers();
 
+	// Перевіряємо чи потрібно відкрити модалку автоматично
+	checkAndShowAuthModal();
+
 	console.log('✅ Auth modals initialized');
+}
+
+/**
+ * Перевіряє чи потрібно відкрити модалку реєстрації автоматично
+ */
+function checkAndShowAuthModal() {
+	// Перевіряємо наявність прапорця у window
+	if (window.showAuthModal && window.authModalTab) {
+		console.log('🔓 Auto-opening auth modal, tab:', window.authModalTab);
+		const modal = document.getElementById('auth-modal');
+		if (modal) {
+			modal.classList.add('active');
+			// Перемикаємо на потрібну вкладку
+			if (window.authModalTab === 'register') {
+				const registerTab = document.querySelector('[data-tab="register-tab"]');
+				if (registerTab) {
+					registerTab.click();
+				}
+			}
+		}
+	}
 }
 
 /**

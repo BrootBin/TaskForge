@@ -282,6 +282,10 @@
         {% if show_2fa_modal and username %}
             window.show2faUser = "{{ username }}";
         {% endif %}
+        {% if show_auth_modal %}
+            window.showAuthModal = true;
+            window.authModalTab = "{{ auth_modal_tab|default:'register' }}";
+        {% endif %}
     </script>
   </body>
 </html>

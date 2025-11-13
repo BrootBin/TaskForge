@@ -12,9 +12,28 @@ from .activity_tracker import track_user_activity, get_user_weekly_activity
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
+from functools import wraps
 import random
 import json
 import os
+
+
+def auth_required_with_modal(view_func):
+    """
+    Декоратор для перевірки аутентифікації.
+    Якщо користувач не аутентифікований, показує головну сторінку з відкритою модалкою реєстрації.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            # Повертаємо головну сторінку з прапорцем для відкриття модалки
+            response = render(request, 'pages/index.html', {
+                'show_auth_modal': True,
+                'auth_modal_tab': 'register',  # Відкриваємо вкладку реєстрації
+            })
+            return response
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 def home(request):
     print(f"Home view called. User authenticated: {request.user.is_authenticated}")
@@ -76,7 +95,7 @@ def home(request):
     })
 
 
-@login_required
+@auth_required_with_modal
 def goals_page(request):
     """Строрінка керування цілями користувача"""
     from .models import Goal, SubGoal, GoalTemplate
@@ -111,7 +130,7 @@ def goals_page(request):
         'average_progress': round(average_progress, 1),
     })
 
-@login_required
+@auth_required_with_modal
 def habits_page(request):
     """Сторінка управління привычками користувача"""
     from .models import Habit, HabitTemplate
@@ -1567,7 +1586,7 @@ def save_habits_completion(request):
         return JsonResponse({"status": "error", "message": "Failed to save habits completion"}, status=500)
 
 
-@login_required
+@auth_required_with_modal
 def statistics_page(request):
     """Страница статистики пользователя с графиками и анимациями"""
     from django.utils import timezone
