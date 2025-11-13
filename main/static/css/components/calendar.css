@@ -12,6 +12,8 @@
 	box-shadow: var(--shadow-card);
 	align-self: flex-start;
 	margin-top: 20px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 .calendar-header {

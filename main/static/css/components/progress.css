@@ -5,16 +5,12 @@
 
 /* === Monthly Progress Circle === */
 .monthly-progress-container {
-	width: 100px;
-	height: 100px;
-	position: relative;
-	margin-right: 15px;
-	align-self: flex-start;
-	margin-top: 20px;
+	width: 80px;
+	height: 80px;
+	position: absolute;
+	right: 0;
+	top: 0;
 	z-index: 1;
-	/* Важливо для коректного відображення */
-	float: right;
-	/* Додаємо float для коректного позиціонування */
 }
 
 .welcome-section .monthly-progress-container {
@@ -53,19 +49,23 @@
 
 /* Улучшенный центрированный текст в кругах прогресса */
 .monthly-progress-container .progress-text {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	height: 50px;
-	width: 50px;
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 600;
 	line-height: 1.2;
 	text-align: center;
 	white-space: normal;
 	padding: 0;
 	margin: 0;
+	width: auto;
+	height: auto;
 }
 
 /* === Progress Circle in Dashboard === */
@@ -117,44 +117,33 @@
 /* Медиа-запросы для элементов прогресса */
 @media (max-width: 768px) {
 	.monthly-progress-container {
-		width: 70px;
-		height: 70px;
-		margin: 0;
-		float: right;
-		position: relative;
-		display: block;
-		margin-top: 10px;
-		margin-right: 10px;
+		width: 60px;
+		height: 60px;
+		position: absolute;
+		top: 0;
+		right: 0;
 	}
 
 	.welcome-section .monthly-progress-container {
-		position: relative;
-		top: auto;
-		right: auto;
-		float: right;
-		margin: 10px 10px 10px 0;
-	}
-
-	/* Контейнер welcome-section должен быть flex */
-	.welcome-section {
-		display: flex;
-		flex-direction: column;
+		position: absolute;
+		top: 0;
+		right: 0;
 	}
 
 	/* Центрирование текста в круге */
 	.monthly-progress-container .progress-text {
-		font-size: 10px;
+		font-size: 9px;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 		align-items: center;
 		text-align: center;
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 60px;
-		height: 60px;
+		width: auto;
+		height: auto;
 		margin: 0;
 		padding: 0;
 		line-height: 1.2;

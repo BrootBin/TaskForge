@@ -264,7 +264,7 @@ header.nav-bar.has-admin-btn .nav-links ul {
 /* Адаптивність навбару */
 @media (max-width: 768px) {
 	header.nav-bar {
-		width: calc(90% - 40px);
+		width: calc(95% - 30px);
 		margin: 10px auto 0 auto;
 		flex-direction: row;
 		flex-wrap: wrap;
