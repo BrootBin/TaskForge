@@ -1599,13 +1599,24 @@ def statistics_page(request):
     completed_goals = user_goals.filter(completed=True).count()
     active_goals = user_goals.filter(completed=False).count()
     
-    # Прогресс активных целей
     active_goals_list = user_goals.filter(completed=False).prefetch_related('subgoals')
     total_progress = 0
+    goal_count_for_progress = 0
+    
+    # Добавляем активные цели
     if active_goals_list.exists():
         for goal in active_goals_list:
             total_progress += goal.get_progress_percent()
-        average_goal_progress = round(total_progress / active_goals_list.count(), 1)
+            goal_count_for_progress += 1
+    
+    # Добавляем завершенные цели как 100%
+    if completed_goals > 0:
+        total_progress += (completed_goals * 100)
+        goal_count_for_progress += completed_goals
+    
+    # Вычисляем средний прогресс
+    if goal_count_for_progress > 0:
+        average_goal_progress = round(total_progress / goal_count_for_progress, 1)
     else:
         average_goal_progress = 0
     

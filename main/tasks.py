@@ -195,10 +195,14 @@ def generate_habit_notifications():
     current_time = now.time()
     today = now.date()
     
+    print(f"🕐 Current time: {now} (timezone: {timezone.get_current_timezone()})")
+    
     # End of day is 23:59:59
     end_of_day = time(23, 59, 59)
     end_of_day_datetime = timezone.make_aware(datetime.combine(today, end_of_day))
     time_until_midnight = (end_of_day_datetime - now).total_seconds() / 60  # minutes
+    
+    print(f"⏰ Time until midnight: {time_until_midnight:.1f} minutes")
     
     # Определяем временные интервалы для напоминаний (в минутах до конца дня)
     reminder_intervals = {
@@ -212,12 +216,14 @@ def generate_habit_notifications():
     # Определяем текущий интервал напоминания (с погрешностью ±2 минуты)
     current_reminder = None
     for minutes, label in reminder_intervals.items():
-        if abs(time_until_midnight - minutes) <= 2:
+        diff = abs(time_until_midnight - minutes)
+        print(f"   Checking {label}: {diff:.1f} min difference")
+        if diff <= 2:
             current_reminder = (minutes, label)
             break
     
     if not current_reminder:
-        print(f"⏰ Current time: {current_time}, {time_until_midnight:.0f} min until midnight - no reminder scheduled")
+        print(f"⏰ No reminder scheduled for current time (next reminder at 2h, 1h, 30min, 15min, or 5min before midnight)")
         return "No reminder scheduled for current time"
     
     reminder_minutes, reminder_label = current_reminder

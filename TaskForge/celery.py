@@ -9,6 +9,10 @@ app = Celery('TaskForge')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
+# Налаштування timezone для Celery
+app.conf.timezone = 'Europe/Kyiv'
+app.conf.enable_utc = False
+
 app.conf.beat_schedule = {
     # Напоминания о streak каждые 5 минут (проверяет нужен ли reminder)
     'check-streak-reminders-every-5-minutes': {
