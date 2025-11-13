@@ -7,16 +7,14 @@
 .monthly-progress-container {
 	width: 80px;
 	height: 80px;
-	position: absolute;
-	right: 0;
-	top: 0;
+	position: relative;
+	flex-shrink: 0;
 	z-index: 1;
 }
 
 .welcome-section .monthly-progress-container {
-	position: absolute;
-	top: 0;
-	right: 0;
+	position: relative;
+	align-self: flex-start;
 }
 
 .progress-ring__background {
@@ -117,17 +115,16 @@
 /* Медиа-запросы для элементов прогресса */
 @media (max-width: 768px) {
 	.monthly-progress-container {
-		width: 60px;
-		height: 60px;
-		position: absolute;
-		top: 0;
-		right: 0;
+		width: 70px;
+		height: 70px;
+		position: relative;
+		margin: 20px auto 0 auto;
 	}
 
 	.welcome-section .monthly-progress-container {
-		position: absolute;
-		top: 0;
-		right: 0;
+		position: relative;
+		align-self: center;
+		margin: 20px auto 0 auto;
 	}
 
 	/* Центрирование текста в круге */
