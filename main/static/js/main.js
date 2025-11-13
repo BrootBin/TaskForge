@@ -27,7 +27,6 @@ document.write('<script src="/static/js/components/notification.js"></script>');
 document.write('<script src="/static/js/components/subgoal.js"></script>');
 document.write('<script src="/static/js/components/index-subgoals.js"></script>');
 document.write('<script src="/static/js/components/habit-checkbox.js"></script>');
-document.write('<script src="/static/js/debug.js"></script>');
 
 // МАКСИМАЛЬНО РАННЕЕ начало загрузки данных привычек
 document.addEventListener('DOMContentLoaded', function () {

@@ -116,11 +116,25 @@
 
 /* Медиа-запросы для элементов прогресса */
 @media (max-width: 768px) {
-	.monthly-progress-container.absolute {
+	.monthly-progress-container {
+		width: 80px;
+		height: 80px;
+		margin-right: 0;
+		margin-top: 10px;
+		float: none;
 		position: relative;
-		top: 0;
-		right: 0;
-		margin: 20px auto;
+	}
+
+	.welcome-section .monthly-progress-container {
+		position: relative;
+		top: auto;
+		right: auto;
+		margin: 15px auto;
+		display: block;
+	}
+
+	.monthly-progress-container .progress-text {
+		font-size: 11px;
 	}
 
 	.stats-dashboard .progress-circle {
