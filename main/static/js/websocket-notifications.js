@@ -8,8 +8,57 @@
 	// Экспортируем в window для доступа из debug.js
 	window.notificationSocket = null;
 	let reconnectAttempts = 0;
-	const MAX_RECONNECT_ATTEMPTS = 5;
-	const RECONNECT_DELAY = 3000;
+	const MAX_RECONNECT_ATTEMPTS = 999; // Практически бесконечные попытки
+	const RECONNECT_DELAY = 3000; // Начальная задержка 3 секунды
+	const MAX_RECONNECT_DELAY = 30000; // Максимальная задержка 30 секунд
+	let reconnectTimer = null;
+	let heartbeatTimer = null;
+	let missedHeartbeats = 0;
+	const HEARTBEAT_INTERVAL = 30000; // Проверка каждые 30 секунд
+	const MAX_MISSED_HEARTBEATS = 3; // Максимум пропущенных проверок
+
+	/**
+	 * Отправляет heartbeat ping для проверки соединения
+	 */
+	function sendHeartbeat() {
+		if (window.notificationSocket && window.notificationSocket.readyState === WebSocket.OPEN) {
+			try {
+				window.notificationSocket.send(JSON.stringify({ type: 'ping' }));
+				missedHeartbeats = 0;
+				console.log('💓 Heartbeat sent');
+			} catch (error) {
+				console.error('❌ Failed to send heartbeat:', error);
+				missedHeartbeats++;
+				if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
+					console.warn('⚠️ Too many missed heartbeats, reconnecting...');
+					if (window.notificationSocket) {
+						window.notificationSocket.close();
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Запускает heartbeat таймер
+	 */
+	function startHeartbeat() {
+		stopHeartbeat();
+		heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
+		console.log('💓 Heartbeat timer started');
+	}
+
+	/**
+	 * Останавливает heartbeat таймер
+	 */
+	function stopHeartbeat() {
+		if (heartbeatTimer) {
+			clearInterval(heartbeatTimer);
+			heartbeatTimer = null;
+			missedHeartbeats = 0;
+			console.log('💓 Heartbeat timer stopped');
+		}
+	}
 
 	/**
 	 * Подключение к WebSocket серверу
@@ -32,6 +81,8 @@
 			window.notificationSocket.onopen = function (e) {
 				console.log('✅ WebSocket connected');
 				reconnectAttempts = 0;
+				missedHeartbeats = 0;
+				startHeartbeat(); // Запускаем heartbeat при успешном подключении
 			};
 
 			window.notificationSocket.onmessage = function (e) {
@@ -56,14 +107,30 @@
 			window.notificationSocket.onclose = function (e) {
 				console.log('🔌 WebSocket disconnected:', e.code, e.reason);
 				window.notificationSocket = null;
+				stopHeartbeat(); // Останавливаем heartbeat при отключении
 
-				// Попытка переподключения
+				// Экспоненциальная задержка: 3s, 6s, 12s, 24s, 30s (макс)
+				const delay = Math.min(RECONNECT_DELAY * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+
+				// Попытка переподключения с экспоненциальной задержкой
 				if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
 					reconnectAttempts++;
-					console.log(`🔄 Reconnecting... Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-					setTimeout(connectNotificationWebSocket, RECONNECT_DELAY);
+					console.log(`🔄 Reconnecting in ${delay / 1000}s... Attempt ${reconnectAttempts}`);
+
+					// Очищаем предыдущий таймер если есть
+					if (reconnectTimer) {
+						clearTimeout(reconnectTimer);
+					}
+
+					reconnectTimer = setTimeout(connectNotificationWebSocket, delay);
 				} else {
 					console.error('❌ Max reconnection attempts reached');
+					// Через 1 минуту сбрасываем счетчик для возможности повторных попыток
+					setTimeout(() => {
+						console.log('🔄 Resetting reconnection attempts counter');
+						reconnectAttempts = 0;
+						connectNotificationWebSocket();
+					}, 60000);
 				}
 			};
 		} catch (error) {
@@ -75,6 +142,11 @@
 	 * Отключение от WebSocket
 	 */
 	function disconnectNotificationWebSocket() {
+		stopHeartbeat(); // Останавливаем heartbeat
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			reconnectTimer = null;
+		}
 		if (window.notificationSocket) {
 			window.notificationSocket.close();
 			window.notificationSocket = null;

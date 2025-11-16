@@ -180,7 +180,36 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Europe/Kyiv'
 CELERY_ENABLE_UTC = True
+
+# Налаштування надійності з'єднання з broker
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_RETRY = True  # Автоматичне перепідключення
+CELERY_BROKER_CONNECTION_MAX_RETRIES = None  # Безкінечні спроби
+CELERY_BROKER_HEARTBEAT = 30  # Heartbeat кожні 30 секунд для перевірки з'єднання
+CELERY_BROKER_POOL_LIMIT = 10  # Максимум 10 з'єднань в пулі
+
+# Налаштування транспорту для Redis
+if REDIS_URL:
+    CELERY_BROKER_TRANSPORT_OPTIONS = {
+        'visibility_timeout': 3600,  # 1 година
+        'max_retries': 3,
+        'interval_start': 0,
+        'interval_step': 0.2,
+        'interval_max': 0.5,
+        'socket_keepalive': True,  # Підтримувати з'єднання живим
+        'socket_keepalive_options': {
+            1: 1,   # TCP_KEEPIDLE
+            2: 1,   # TCP_KEEPINTVL  
+            3: 3,   # TCP_KEEPCNT
+        },
+        'health_check_interval': 10,  # Перевірка здоров'я з'єднання кожні 10 сек
+    }
+
+# Налаштування worker'а для надійності
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Отримувати по 1 task за раз
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Перезапуск worker після 1000 tasks
+CELERY_TASK_ACKS_LATE = True  # Підтверджувати task тільки після успішного виконання
+CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Повертати task в чергу при падінні worker
 
 # Django Channels configuration
 # For WebSocket support

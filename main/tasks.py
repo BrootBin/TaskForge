@@ -178,159 +178,199 @@ def cleanup_declined_2fa(pending_id):
         return f"Error: {str(e)}"
 
 
-@shared_task
-def generate_habit_notifications():
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def generate_habit_notifications(self):
     """
     Generate streak reminder notifications for users
     Sends reminders at: 2 hours, 1 hour, 30 min, 15 min, 5 min before day ends
+    
+    Optimization: Only runs during active period (21:00-00:05) to reduce logs and load.
+    This reduces daily checks from ~288 to ~37 (87% reduction).
+    
+    Args:
+        self: Task instance (bind=True для retry)
+    
+    Retries: 3 раза с интервалом 30 секунд при ошибках БД
     """
     from django.contrib.auth.models import User
     from django.utils import timezone
     from datetime import datetime, time, timedelta
     from .models import Habit, Notification, TelegramProfile
+    from django.db import OperationalError
     
-    print("🔔 Generating habit reminder notifications...")
-    
-    now = timezone.now()
-    current_time = now.time()
-    today = now.date()
-    
-    print(f"🕐 Current time: {now} (timezone: {timezone.get_current_timezone()})")
-    
-    # End of day is 23:59:59
-    end_of_day = time(23, 59, 59)
-    end_of_day_datetime = timezone.make_aware(datetime.combine(today, end_of_day))
-    time_until_midnight = (end_of_day_datetime - now).total_seconds() / 60  # minutes
-    
-    print(f"⏰ Time until midnight: {time_until_midnight:.1f} minutes")
-    
-    # Определяем временные интервалы для напоминаний (в минутах до конца дня)
-    reminder_intervals = {
-        120: "2 hours",  # 2 часа
-        60: "1 hour",    # 1 час
-        30: "30 minutes", # 30 минут
-        15: "15 minutes", # 15 минут
-        5: "5 minutes"    # 5 минут
-    }
-    
-    # Определяем текущий интервал напоминания (с погрешностью ±2 минуты)
-    current_reminder = None
-    for minutes, label in reminder_intervals.items():
-        diff = abs(time_until_midnight - minutes)
-        print(f"   Checking {label}: {diff:.1f} min difference")
-        if diff <= 2:
-            current_reminder = (minutes, label)
-            break
-    
-    if not current_reminder:
-        print(f"⏰ No reminder scheduled for current time (next reminder at 2h, 1h, 30min, 15min, or 5min before midnight)")
-        return "No reminder scheduled for current time"
-    
-    reminder_minutes, reminder_label = current_reminder
-    print(f"🎯 Sending {reminder_label} reminder ({reminder_minutes} minutes before midnight)")
-    
-    notifications_sent = 0
-    
-    # Получаем всех пользователей с активными привычками
-    users_with_habits = User.objects.filter(
-        habits__active=True
-    ).distinct()
-    
-    for user in users_with_habits:
-        # Получаем активные привычки пользователя, которые НЕ выполнены сегодня
-        incomplete_habits = []
+    try:
+        print("🔔 Generating habit reminder notifications...")
         
-        for habit in user.habits.filter(active=True):
-            if not habit.is_checked_today():
-                incomplete_habits.append(habit)
+        now = timezone.now()
+        current_time = now.time()
+        today = now.date()
         
-        if not incomplete_habits:
-            continue  # У пользователя все привычки выполнены
+        print(f"🕐 Current time: {now} (timezone: {timezone.get_current_timezone()})")
         
-        # Проверяем настройки Telegram
-        profile = getattr(user, 'telegram_profile', None)
-        send_telegram = bool(profile and profile.connected and 
-                        profile.telegram_id and profile.notifications_enabled)
+        # ОПТИМІЗАЦІЯ: Перевіряємо чи зараз "активний період" (21:00 - 00:05)
+        current_hour = current_time.hour
+        current_minute = current_time.minute
         
-        # Формируем сообщение на английском (как в Duolingo)
-        if len(incomplete_habits) == 1:
-            habit = incomplete_habits[0]
-            if habit.current_streak > 0:
-                message = (
-                    f"Hi {user.username}! 👋\n\n"
-                    f"⚠️ Your {habit.current_streak}-day streak for '{habit.name}' is about to end!\n\n"
-                    f"You have only {reminder_label} left to complete it today. "
-                    f"Don't let all your hard work go to waste - keep your momentum going! 💪\n\n"
-                    f"Complete it now to save your streak! 🔥"
-                )
-            else:
-                message = (
-                    f"Hi {user.username}! 👋\n\n"
-                    f"📝 Friendly reminder: You haven't completed '{habit.name}' today.\n\n"
-                    f"You have {reminder_label} left! "
-                    f"Starting is the hardest part, but you've got this! "
-                    f"Take the first step and build your streak now! 🚀"
-                )
-        else:
-            total_streak_days = sum(h.current_streak for h in incomplete_habits)
-            habit_names = "', '".join([h.name for h in incomplete_habits[:3]])
-            if len(incomplete_habits) > 3:
-                habit_names += f"' and {len(incomplete_habits) - 3} more"
-            else:
-                habit_names = "'" + habit_names + "'"
-            
-            if total_streak_days > 0:
-                message = (
-                    f"Hi {user.username}! 👋\n\n"
-                    f"⚠️ Hurry up! You have {len(incomplete_habits)} habits that need attention today:\n"
-                    f"{habit_names}\n\n"
-                    f"Together, they represent {total_streak_days} days of streaks at risk! "
-                    f"You only have {reminder_label} left. Don't let your progress slip away - "
-                    f"you've worked too hard to get here. 💪\n\n"
-                    f"Complete them now and keep your momentum strong! 🔥"
-                )
-            else:
-                message = (
-                    f"Hi {user.username}! �\n\n"
-                    f"�📝 You still have {len(incomplete_habits)} habits to complete today:\n"
-                    f"{habit_names}\n\n"
-                    f"Only {reminder_label} remaining! Every journey begins with a single step. "
-                    f"Start now and build something amazing! 🚀\n\n"
-                    f"You can do this! 💪"
-                )
-        
-        # Создаем уведомление
-        notification = Notification.objects.create(
-            user=user,
-            message=message,
-            notification_type='streak_reminder',
-            send_web=True,
-            send_telegram=send_telegram,
-            scheduled_time=now
+        # Активний період: з 21:00 до 00:05 наступного дня
+        is_active_period = (
+            current_hour >= 21 or  # Від 21:00 до 23:59
+            (current_hour == 0 and current_minute <= 5)  # Від 00:00 до 00:05
         )
         
-        # Отправляем web-уведомление
-        try:
-            from .notification import send_web_notification
-            send_web_notification(user, message)
-            notification.web_sent = True
-        except Exception as e:
-            print(f"❌ Failed to send web notification to {user.username}: {e}")
+        if not is_active_period:
+            if current_minute < 5:
+                print(f"😴 Outside active period (21:00-00:05). Current time: {current_time.hour:02d}:{current_time.minute:02d}. Skipping check.")
+            return "Outside active period"
         
-        # Отправляем в Telegram если включено
-        if send_telegram:
-            try:
-                send_telegram_notification_task.delay(user.id, message)
-                notification.telegram_sent = True
-            except Exception as e:
-                print(f"❌ Failed to send telegram notification to {user.username}: {e}")
+        # End of day is 23:59:59
+        end_of_day = time(23, 59, 59)
+        end_of_day_datetime = timezone.make_aware(datetime.combine(today, end_of_day))
+        time_until_midnight = (end_of_day_datetime - now).total_seconds() / 60  # minutes
         
-        notification.save()
-        notifications_sent += 1
-        print(f"✅ Sent reminder to {user.username} ({len(incomplete_habits)} habits incomplete)")
+        print(f"⏰ Time until midnight: {time_until_midnight:.1f} minutes")
+        
+        # Определяем временные интервалы для напоминаний (в минутах до конца дня)
+        reminder_intervals = {
+            120: "2 hours",  # 2 часа
+            60: "1 hour",    # 1 час
+            30: "30 minutes", # 30 минут
+            15: "15 minutes", # 15 минут
+            5: "5 minutes"    # 5 минут
+        }
     
-    print(f"🎉 Sent {notifications_sent} streak reminder notifications")
-    return f"Sent {notifications_sent} notifications"
+        # Определяем текущий интервал напоминания (с погрешностью ±2.5 минуты)
+        # Это позволяет отправлять напоминания даже если таска запустилась с небольшой задержкой
+        current_reminder = None
+        for minutes, label in reminder_intervals.items():
+            diff = abs(time_until_midnight - minutes)
+            print(f"   Checking {label}: {diff:.1f} min difference")
+            if diff <= 2.5:  # Увеличена погрешность с 2 до 2.5 минут
+                current_reminder = (minutes, label)
+                break
+        
+        if not current_reminder:
+            print(f"⏰ No reminder scheduled for current time (next reminder at 2h, 1h, 30min, 15min, or 5min before midnight)")
+            print(f"   Current time until midnight: {time_until_midnight:.1f} minutes")
+            return "No reminder scheduled for current time"
+        
+        reminder_minutes, reminder_label = current_reminder
+        print(f"🎯 Sending {reminder_label} reminder ({reminder_minutes} minutes before midnight)")
+        
+        notifications_sent = 0
+        
+        # Получаем всех пользователей с активными привычками
+        users_with_habits = User.objects.filter(
+            habits__active=True
+        ).distinct()
+        
+        for user in users_with_habits:
+            # Получаем активные привычки пользователя, которые НЕ выполнены сегодня
+            incomplete_habits = []
+            
+            for habit in user.habits.filter(active=True):
+                if not habit.is_checked_today():
+                    incomplete_habits.append(habit)
+            
+            if not incomplete_habits:
+                continue  # У пользователя все привычки выполнены
+            
+            # Проверяем настройки Telegram
+            profile = getattr(user, 'telegram_profile', None)
+            send_telegram = bool(profile and profile.connected and 
+                            profile.telegram_id and profile.notifications_enabled)
+            
+            # Формируем сообщение на английском (как в Duolingo)
+            if len(incomplete_habits) == 1:
+                habit = incomplete_habits[0]
+                if habit.current_streak > 0:
+                    message = (
+                        f"Hi {user.username}! 👋\n\n"
+                        f"⚠️ Your {habit.current_streak}-day streak for '{habit.name}' is about to end!\n\n"
+                        f"You have only {reminder_label} left to complete it today. "
+                        f"Don't let all your hard work go to waste - keep your momentum going! 💪\n\n"
+                        f"Complete it now to save your streak! 🔥"
+                    )
+                else:
+                    message = (
+                        f"Hi {user.username}! 👋\n\n"
+                        f"📝 Friendly reminder: You haven't completed '{habit.name}' today.\n\n"
+                        f"You have {reminder_label} left! "
+                        f"Starting is the hardest part, but you've got this! "
+                        f"Take the first step and build your streak now! 🚀"
+                    )
+            else:
+                total_streak_days = sum(h.current_streak for h in incomplete_habits)
+                habit_names = "', '".join([h.name for h in incomplete_habits[:3]])
+                if len(incomplete_habits) > 3:
+                    habit_names += f"' and {len(incomplete_habits) - 3} more"
+                else:
+                    habit_names = "'" + habit_names + "'"
+                
+                if total_streak_days > 0:
+                    message = (
+                        f"Hi {user.username}! 👋\n\n"
+                        f"⚠️ Hurry up! You have {len(incomplete_habits)} habits that need attention today:\n"
+                        f"{habit_names}\n\n"
+                        f"Together, they represent {total_streak_days} days of streaks at risk! "
+                        f"You only have {reminder_label} left. Don't let your progress slip away - "
+                        f"you've worked too hard to get here. 💪\n\n"
+                        f"Complete them now and keep your momentum strong! 🔥"
+                    )
+                else:
+                    message = (
+                        f"Hi {user.username}! 👋\n\n"
+                        f"📝 You still have {len(incomplete_habits)} habits to complete today:\n"
+                        f"{habit_names}\n\n"
+                        f"Only {reminder_label} remaining! Every journey begins with a single step. "
+                        f"Start now and build something amazing! 🚀\n\n"
+                        f"You can do this! 💪"
+                        )
+            
+            # Создаем уведомление
+            notification = Notification.objects.create(
+                user=user,
+                message=message,
+                notification_type='streak_reminder',
+                send_web=True,
+                send_telegram=send_telegram,
+                scheduled_time=now
+            )
+            
+            # Отправляем web-уведомление
+            try:
+                from .notification import send_web_notification
+                send_web_notification(user, message)
+                notification.web_sent = True
+            except Exception as e:
+                print(f"❌ Failed to send web notification to {user.username}: {e}")
+            
+            # Отправляем в Telegram если включено
+            if send_telegram:
+                try:
+                    send_telegram_notification_task.delay(user.id, message)
+                    notification.telegram_sent = True
+                except Exception as e:
+                    print(f"❌ Failed to send telegram notification to {user.username}: {e}")
+            
+            notification.save()
+            notifications_sent += 1
+            print(f"✅ Sent reminder to {user.username} ({len(incomplete_habits)} habits incomplete)")
+        
+        print(f"🎉 Sent {notifications_sent} streak reminder notifications")
+        return f"Sent {notifications_sent} notifications"
+    
+    except OperationalError as e:
+        print(f"❌ Database connection error: {e}")
+        print(f"🔄 Retrying task (attempt {self.request.retries + 1}/3)...")
+        # Retry через 30 секунд при ошибке БД
+        raise self.retry(exc=e, countdown=30)
+    
+    except Exception as e:
+        print(f"❌ Unexpected error in generate_habit_notifications: {e}")
+        import traceback
+        print(traceback.format_exc())
+        # Для других ошибок не делаем retry
+        return f"Error: {str(e)}"
 
 
 @shared_task
