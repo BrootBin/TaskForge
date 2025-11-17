@@ -202,10 +202,11 @@ def generate_habit_notifications(self):
         print("🔔 Generating habit reminder notifications...")
         
         now = timezone.now()
+        local_now = timezone.localtime(now)
         current_time = now.time()
         today = now.date()
         
-        print(f"🕐 Current time: {now} (timezone: {timezone.get_current_timezone()})")
+        print(f"🕐 Current time: {local_now} (timezone: {timezone.get_current_timezone()})")
         
         # ОПТИМІЗАЦІЯ: Перевіряємо чи зараз "активний період" (21:00 - 00:05)
         current_hour = current_time.hour
@@ -221,6 +222,11 @@ def generate_habit_notifications(self):
             if current_minute < 5:
                 print(f"😴 Outside active period (21:00-00:05). Current time: {current_time.hour:02d}:{current_time.minute:02d}. Skipping check.")
             return "Outside active period"
+        
+        # Якщо вже після півночі (00:00-00:05), це вже новий день - пропускаємо нагадування
+        if current_hour == 0 and current_minute <= 5:
+            print(f"🌙 New day started (00:00-00:05). Broken streaks task will run at 00:05. Skipping habit reminders.")
+            return "New day - waiting for broken streaks check"
         
         # End of day is 23:59:59
         end_of_day = time(23, 59, 59)
@@ -238,13 +244,13 @@ def generate_habit_notifications(self):
             5: "5 minutes"    # 5 минут
         }
     
-        # Определяем текущий интервал напоминания (с погрешностью ±2.5 минуты)
+        # Определяем текущий интервал напоминания (с погрешностью ±3 минуты)
         # Это позволяет отправлять напоминания даже если таска запустилась с небольшой задержкой
         current_reminder = None
         for minutes, label in reminder_intervals.items():
             diff = abs(time_until_midnight - minutes)
             print(f"   Checking {label}: {diff:.1f} min difference")
-            if diff <= 2.5:  # Увеличена погрешность с 2 до 2.5 минут
+            if diff <= 3.0:  # Увеличена погрешность с 2.5 до 3 минут
                 current_reminder = (minutes, label)
                 break
         
@@ -537,19 +543,23 @@ def check_and_notify_broken_streaks():
     notifications_sent = 0
     
     users_with_habits = User.objects.filter(habits__active=True).distinct()
+    print(f"📊 Found {users_with_habits.count()} users with active habits")
     
     for user in users_with_habits:
         broken_habits = []
         
         for habit in user.habits.filter(active=True):
-            # Проверяем был ли streak и был ли checkin вчера
-            if habit.streak_days > 0 and habit.last_checkin and habit.last_checkin < yesterday:
+            # Використовуємо current_streak який враховує пропущені дні
+            # Якщо streak_days > 0, але current_streak = 0 - значить streak обірвався
+            if habit.streak_days > 0 and habit.current_streak == 0:
                 broken_habits.append({
                     'name': habit.name,
                     'lost_streak': habit.streak_days
                 })
+                print(f"💔 Found broken streak for {user.username}: {habit.name} (lost {habit.streak_days} days)")
         
         if not broken_habits:
+            print(f"✅ {user.username}: all streaks intact (checked {user.habits.filter(active=True).count()} habits)")
             continue
         
         # Формируем сообщение о потерянных streak
@@ -570,7 +580,7 @@ def check_and_notify_broken_streaks():
         
         # Проверяем настройки Telegram
         profile = getattr(user, 'telegram_profile', None)
-        send_telegram = (profile and profile.connected and 
+        send_telegram = bool(profile and profile.connected and 
                         profile.telegram_id and profile.notifications_enabled)
         
         # Создаем уведомление
@@ -600,6 +610,10 @@ def check_and_notify_broken_streaks():
         notification.save()
         notifications_sent += 1
         print(f"✅ Notified {user.username} about {len(broken_habits)} broken streaks")
+        print(f"   📧 Web: {notification.web_sent}, Telegram: {notification.telegram_sent}")
+    
+    if notifications_sent == 0:
+        print("ℹ️ No broken streaks found - all users maintained their streaks!")
     
     print(f"🎉 Sent {notifications_sent} broken streak notifications")
     return f"Sent {notifications_sent} notifications"
