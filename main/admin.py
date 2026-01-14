@@ -15,20 +15,20 @@ from .models import (
     Notification, TelegramProfile, SubGoalTemplate, TechAdmin, SupportMessage, PendingPasswordReset
 )
 
-# Кастомный AdminSite для разрешения доступа техадминам
+# Кастомний AdminSite для дозволу доступу техадмін
 class TaskForgeAdminSite(AdminSite):
     site_header = "TaskForge Administration"
     site_title = "TaskForge Admin"
     index_title = "Welcome to TaskForge Administration"
     
     def has_permission(self, request):
-        # Разрешаем доступ суперпользователям и техадминам
+        # Дозволяємо доступ суперкористувачам та техадмінам
         return request.user.is_active and (
             request.user.is_superuser or 
             (hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active)
         )
 
-# Создаем глобальный экземпляр кастомного админ сайта
+# Створюємо глобальний екземпляр кастомного адмін сайту
 admin_site = TaskForgeAdminSite(name='taskforge_admin')
 
 # Форма для створення шаблону цілі з підцілями
@@ -172,24 +172,24 @@ class GoalTemplateAdmin(admin.ModelAdmin):
         # Використовувати напряму render замість render_change_form
         return render(request, 'admin/goaltemplate_form.html', context)
 
-# Кастомный админ для пользователей (для техадминов)
+# Кастомний адмін для користувачів (для техадмінів)
 class TechAdminUserAdmin(UserAdmin):
-    """Ограниченный доступ к пользователям для техадминов"""
+    """Обмежений доступ до користувачів для техадмінів"""
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_active', 'date_joined')
     list_filter = ('is_active', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
     readonly_fields = ('date_joined', 'last_login')
     
     def has_add_permission(self, request):
-        # Техадмины не могут создавать пользователей
+        # Техадміни не можуть створювати користувачів
         return request.user.is_superuser
     
     def has_delete_permission(self, request, obj=None):
-        # Техадмины не могут удалять пользователей
+        # Техадміни не можуть видаляти користувачів
         return request.user.is_superuser
     
     def has_change_permission(self, request, obj=None):
-        # Техадмины могут только просматривать
+        # Техадміни можуть тільки переглядати
         if request.user.is_superuser:
             return True
         return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
@@ -197,10 +197,10 @@ class TechAdminUserAdmin(UserAdmin):
     def get_readonly_fields(self, request, obj=None):
         if request.user.is_superuser:
             return self.readonly_fields
-        # Для техадминов все поля только для чтения
+        # Для техадмінів усі поля лише для читання
         return [f.name for f in self.model._meta.fields]
 
-# Админ для технических администраторов
+# Адмін для технічних адміністраторів
 class TechAdminAdmin(admin.ModelAdmin):
     list_display = ('user', 'is_active', 'created_at', 'created_by')
     list_filter = ('is_active', 'created_at', 'user__email')
@@ -263,7 +263,7 @@ class SupportMessageAdmin(admin.ModelAdmin):
         return False
     
     def get_queryset(self, request):
-        """Тех-админ видит тикеты, кроме was_resolved=True"""
+        """Тех-адмін бачить тикети, крім was_resolved=True"""
         from django.db.models import Q
         from django.utils import timezone
         queryset = super().get_queryset(request)
@@ -281,17 +281,17 @@ class SupportMessageAdmin(admin.ModelAdmin):
         from django.utils import timezone
         now = timezone.now()
         error = None
-        # Если техадмин не назначен, назначаем текущего пользователя если это техадмин
+        # Якщо техадмін не призначений, призначаємо поточного користувача якщо це техадмін
         if not obj.assigned_to and not request.user.is_superuser:
             if hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active:
                 obj.assigned_to = request.user.tech_admin
-        # Если проблема с TelegramProfile, выставляем средний приоритет
+        # Якщо проблема з TelegramProfile, виставляємо середній пріоритет
         if obj.problem_type == 'telegram_profile':
             obj.priority = 'medium'
-        # Проверка: нельзя ставить дату выполнения из будущего
+        # Перевірка: не можна ставити дату виконання з майбутнього
         if obj.resolved_at and obj.resolved_at > now:
             error = "Resolved date cannot be in the future."
-        # Проверка: нельзя поставить was_resolved=True если resolved_at не заполнено
+        # Перевірка: не можна поставити was_resolved=True якщо resolved_at не заповнено
         if obj.was_resolved and not obj.resolved_at:
             error = "You must set 'Resolved At' before marking as resolved."
         if error:
@@ -299,7 +299,7 @@ class SupportMessageAdmin(admin.ModelAdmin):
             return
         super().save_model(request, obj, form, change)
 
-# Ограниченный админ для TelegramProfile (для техадминов)
+# Обмежений адмін для Telegram Profile (для техадмінів)
 class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'telegram_id', 'connected', 'notifications_enabled', 'two_factor_enabled')
     list_filter = ('connected', 'notifications_enabled', 'two_factor_enabled')
@@ -319,14 +319,14 @@ class TechAdminTelegramProfileAdmin(admin.ModelAdmin):
             return True
         return hasattr(request.user, 'tech_admin') and request.user.tech_admin.is_active
 
-# Переопределяем регистрацию пользователей только для техадминов
-# Снимаем стандартную регистрацию User
+# Перевизначаємо реєстрацію користувачів тільки для техадмінів
+# Знімаємо стандартну реєстрацію User
 admin.site.unregister(User)
 
-# Регистрируем с кастомным админом на кастомном сайте
+# Реєструємо з кастомним адміном на кастомному сайті
 admin_site.register(User, TechAdminUserAdmin)
 
-# Реєструємо моделі з адміністративними класами на кастомном сайте
+# Реєструємо моделі з адміністративними класами на кастомному сайті
 admin_site.register(HabitTemplate, HabitTemplateAdmin)
 admin_site.register(GoalTemplate, GoalTemplateAdmin)
 admin_site.register(SubGoalTemplate, SubGoalTemplateAdmin)
@@ -334,7 +334,7 @@ admin_site.register(Notification)
 admin_site.register(Habit)
 admin_site.register(Goal)
 
-# Новые модели для техподдержки
+# Нові моделі для техпідтримки
 admin_site.register(TechAdmin, TechAdminAdmin)
 admin_site.register(SupportMessage, SupportMessageAdmin)
 
@@ -362,6 +362,6 @@ class PendingPasswordResetAdmin(admin.ModelAdmin):
 
 admin_site.register(PendingPasswordReset, PendingPasswordResetAdmin)
 
-# Регистрируем TelegramProfile с ограниченными правами
+# Реєструємо TelegramProfile з обмеженими правами
 admin_site.register(TelegramProfile, TechAdminTelegramProfileAdmin)
 

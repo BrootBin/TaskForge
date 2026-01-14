@@ -8,18 +8,18 @@ from channels.layers import get_channel_layer
 
 
 def send_web_notification(user, message, notification_id=None, created_at=None):
-    """
-    Отправляет веб-уведомление через WebSocket
-    
-    Args:
-        user: User object
-        message: Текст сообщения
-        notification_id: ID уведомления из БД (опционально)
-        created_at: Дата создания (опционально)
-    """
+    """ 
+Надсилає веб-повідомлення через WebSocket 
+
+Args: 
+    user: User object 
+    message: Текст повідомлення 
+    notification_id: ID повідомлення з БД (опціонально) 
+    created_at: Дата створення (опціонально) 
+"""
     channel_layer = get_channel_layer()
     
-    # Используем новый формат с notification_message
+    # Використовуємо новий формат з notification_message
     async_to_sync(channel_layer.group_send)(
         f"user_{user.id}",
         {
@@ -39,7 +39,7 @@ def send_telegram_notification(user, message):
     if profile and profile.connected and profile.telegram_id and profile.notifications_enabled:
         bot = Bot(token=TOKEN)
         try:
-            # Используем синхронную отправку через asyncio.run
+            # Використовуємо синхронне відправлення через asyncio.run
             asyncio.run(bot.send_message(chat_id=profile.telegram_id, text=message))
             print(f"✅ Telegram notification sent to user {user.username}")
         except Exception as e:

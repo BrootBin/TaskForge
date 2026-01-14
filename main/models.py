@@ -40,6 +40,7 @@ class Habit(models.Model):
     
     @property
     def current_streak(self):
+        """Повертає актуальний streak, враховуючи пропущені дні"""
         from django.utils import timezone
         from datetime import timedelta
         
@@ -49,16 +50,16 @@ class Habit(models.Model):
         today = timezone.now().date()
         days_since_last = (today - self.last_checkin).days
         
-        # Если последний чекин был сегодня или вчера - streak актуален
+        # Якщо останній чекін був сьогодні чи вчора – streak актуальний
         if days_since_last <= 1:
             return self.streak_days
         
-        # Если прошло больше дня - streak прерван
+        # Якщо минуло більше дня - streak перервано
         return 0
     
     @property
     def longest_streak(self):
-        """Возвращает максимальный streak за всё время"""
+        """Повертає максимальний streak за весь час"""
         return max(self.max_streak_days, self.current_streak)
     
     @property
@@ -201,14 +202,14 @@ class Notification(models.Model):
 class Pending2FA(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     telegram_id = models.CharField(max_length=50)
-    telegram_message_id = models.CharField(max_length=50, null=True, blank=True) 
+    telegram_message_id = models.CharField(max_length=50, null=True, blank=True)  # ID повідомлення в Telegram
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed = models.BooleanField(default=False)
-    declined = models.BooleanField(default=False)  
+    declined = models.BooleanField(default=False)  # Поле для відхилених запитів
 
 
 class UserActivity(models.Model):
-
+    """Модель для трекинга активності користувача по дням тижня"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='activity')
     
     # Активність по дням тижня (0 = Понеділок, 6 = Неділя)

@@ -45,7 +45,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ).first())()
     
     if profile:
-        # Пользователь уже подключен
+        # Користувач вже підключений
         user = await sync_to_async(lambda: profile.user)()
         await update.message.reply_text(
             f"🎉 <b>Welcome back, {user.username}!</b>\n\n"
@@ -59,7 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='HTML'
         )
     else:
-        # Пользователь не подключен
+        # Користувач не підключений
         await update.message.reply_text(
             "👋 <b>Welcome to TaskForge Bot!</b>\n\n"
             "🔗 To get started, you need to link your TaskForge account.\n\n"
@@ -85,7 +85,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ).first())()
     
     if profile:
-        # Пользователь подключен - показываем полный список команд
+        # Користувач підключений - показуємо повний список команд
         user = await sync_to_async(lambda: profile.user)()
         help_text = f"""
 🤖 <b>TaskForge Bot - Welcome {user.username}!</b>
@@ -108,7 +108,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Use the menu button (☰) next to message input for easy command access!
         """
     else:
-        # Пользователь не подключен - показываем инструкции по подключению
+        # Користувач не підключений - показуємо інструкції щодо підключення
         help_text = """
 🤖 <b>TaskForge Bot - Get Started!</b>
 
@@ -137,7 +137,7 @@ Once linked, you'll get access to:
 async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
-    # ПРОВЕРКА: Запрещаем использование команды если аккаунт уже привязан
+    # ПЕРЕВІРКА: Забороняємо використання команди якщо обліковий запис вже прив'язаний
     existing_connection = await sync_to_async(lambda: TelegramProfile.objects.filter(
         telegram_id=telegram_id, 
         connected=True
@@ -156,7 +156,7 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Проверяем корректность команды
+    # Перевіряємо коректність команди
     if len(context.args) != 1:
         await update.message.reply_text(
             "❌ <b>Invalid Usage</b>\n\n"
@@ -178,7 +178,7 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("✅ This Telegram account is already linked!")
             return
 
-        # Проверяем чи цей telegram_id уже привязан к другому аккаунту (дополнительная проверка)
+        # Перевіряємо чи цей telegram_id вже прив'язаний до іншого облікового запису (додаткова перевірка)
         existing_profile = await sync_to_async(lambda: TelegramProfile.objects.filter(telegram_id=telegram_id).first())()
         
         if existing_profile and existing_profile != profile:
@@ -203,7 +203,7 @@ async def bind(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode='HTML'
             )
         except IntegrityError as e:
-            # Обработка ошибки дублирования telegram_id
+            # Обробка помилки дублювання telegram_id
             if "telegram_id" in str(e) and "unique constraint" in str(e):
                 await update.message.reply_text("❌ This Telegram account is already linked to another user!")
             else:
@@ -291,7 +291,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Проверяем, не истёк ли запрос (например, старше 10 минут)
+        # Перевіряємо, чи не закінчився запит (наприклад, старше 10 хвилин)
         from django.utils import timezone
         import datetime
         
@@ -349,7 +349,7 @@ async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = str(update.effective_user.id)
     
-    # Проверяем, что аккаунт привязан
+    # Перевіряємо, що обліковий запис прив'язаний
     profile = await sync_to_async(lambda: TelegramProfile.objects.select_related('user').filter(
         telegram_id=telegram_id, 
         connected=True
@@ -364,10 +364,10 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Получаем пользователя асинхронно
+    # Отримуємо користувача асинхронно
     user = await sync_to_async(lambda: profile.user)()
     
-    # Проверяем, нет ли активного сброса пароля
+    # Перевірте, чи немає активного скидання пароля
     existing_reset = await sync_to_async(lambda: PendingPasswordReset.objects.filter(
         telegram_id=telegram_id,
         is_confirmed=False,
@@ -383,7 +383,7 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Начинаем процесс сброса пароля
+    # Починаємо процес скидання пароля
     expires_at = timezone.now() + timedelta(minutes=15)
     
     reset_request = await sync_to_async(PendingPasswordReset.objects.create)(
@@ -404,11 +404,11 @@ async def reset_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Handle password reset messages ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатывает сообщения для сброса пароля"""
+    """Обробляє повідомлення для скидання пароля"""
     telegram_id = str(update.effective_user.id)
     message_text = update.message.text
     
-    # Проверяем, есть ли активная сессия сброса пароля
+    # Перевіряємо, чи є активна сесія скидання пароля
     pending_reset = await sync_to_async(lambda: PendingPasswordReset.objects.select_related('user').filter(
         telegram_id=telegram_id,
         is_confirmed=False,
@@ -416,11 +416,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ).first())()
     
     if not pending_reset:
-        return  # Не обрабатываем, если нет активного сброса
+        return  # Не обробляємо, якщо немає активного скидання
     
-    # Если новый пароль еще не установлен
+    # Якщо новий пароль ще не встановлено
     if not pending_reset.new_password:
-        # Валидация пароля
+        # Валідація пароля
         if len(message_text) < 8:
             await update.message.reply_text(
                 "❌ <b>Password Too Short</b>\n\n"
@@ -430,18 +430,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Сохраняем новый пароль (хешируем)
+        # Зберігаємо новий пароль (хешуємо)
         hashed_password = make_password(message_text)
         pending_reset.new_password = hashed_password
         await sync_to_async(pending_reset.save)()
         
-        # Удаляем сообщение с паролем для безопасности
+        # Видаляємо повідомлення з паролем безпеки
         try:
             await update.message.delete()
         except:
             pass
         
-        # Просим подтверждения
+        # Просимо підтверждення
         await update.message.reply_text(
             "✅ <b>Password Set</b>\n\n"
             "Please type your new password again to confirm the change:",
@@ -449,9 +449,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Если пароль уже установлен, проверяем подтверждение
+    # Якщо пароль вже встановлений, перевіряємо підтвердження
     else:
-        # Проверяем, совпадают ли пароли
+        # Перевіряємо, чи збігаються паролі
         from django.contrib.auth.hashers import check_password
         
         if not check_password(message_text, pending_reset.new_password):
@@ -463,18 +463,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Удаляем сообщение с паролем
+        # Видаляємо повідомлення з паролем
         try:
             await update.message.delete()
         except:
             pass
         
-        # Применяем новый пароль
+        # Застосовуємо новий пароль
         user = await sync_to_async(lambda: pending_reset.user)()
         user.password = pending_reset.new_password
         await sync_to_async(user.save)()
         
-        # Помечаем сброс как завершенный
+        # Позначаємо скидання як завершене
         pending_reset.is_confirmed = True
         await sync_to_async(pending_reset.save)()
         
@@ -510,10 +510,10 @@ async def unbind(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Status command ---
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показывает статус привычек пользователя"""
+    """Показує статус звичок користувача"""
     telegram_id = str(update.effective_user.id)
     
-    # Проверяем, что аккаунт привязан
+    # Перевіряємо, що обліковий запис прив'язаний
     profile = await sync_to_async(lambda: TelegramProfile.objects.select_related('user').filter(
         telegram_id=telegram_id, 
         connected=True
@@ -529,10 +529,10 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     try:
-        # Получаем пользователя
+        # Отримуємо користувача
         user = await sync_to_async(lambda: profile.user)()
         
-        # Получаем привычки пользователя
+        # Отримуємо звички користувача
         from main.models import Habit, HabitCheckin
         from django.utils import timezone
         
@@ -556,7 +556,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_count = len(habits)
         
         for habit in habits:
-            # Проверяем выполнение привычки сегодня
+            # Перевіряємо виконання звички сьогодні
             is_completed = await sync_to_async(lambda h=habit: 
                 HabitCheckin.objects.filter(habit=h, date=today, completed=True).exists()
             )()
@@ -567,7 +567,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 status_text += f"⭕ {habit.name}\n"
         
-        # Добавляем общую статистику
+       # Додаємо загальну статистику
         percentage = (completed_count / total_count * 100) if total_count > 0 else 0
         status_text += f"\n📈 <b>Progress: {completed_count}/{total_count} ({percentage:.0f}%)</b>"
         
@@ -590,7 +590,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Bot Commands Setup ---
 async def setup_bot_commands(application):
-    """Настройка меню команд бота"""
+    """Налаштування меню команд бота"""
     commands = [
         BotCommand("start", "🚀 Start using TaskForge"),
         BotCommand("help", "❓ Get help and available commands"),
@@ -609,9 +609,9 @@ async def setup_bot_commands(application):
 # --- Application setup ---
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Настраиваем команды после инициализации приложения
+# Налаштовуємо команди після ініціалізації програми
 async def post_init(application):
-    """Функция вызывается после инициализации приложения"""
+    """Функція викликається після ініціалізації програми"""
     await setup_bot_commands(application)
 
 application.post_init = post_init
