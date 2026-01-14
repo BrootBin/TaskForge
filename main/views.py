@@ -56,7 +56,7 @@ def home(request):
         profile = getattr(request.user, 'telegram_profile', None)
         if profile:
             print(f"🔍 Profile debug: connected={profile.connected}, telegram_id={profile.telegram_id}, bind_code={profile.bind_code}")
-            # Если аккаунт подключен, не показываем bind_code
+            # Якщо обліковий запис підключено, не показуємо bind_code
             telegram_code = None if (profile.connected and profile.telegram_id) else profile.bind_code
             # Виправляємо: використовуємо правильне поле для сповіщень
             telegram_notify_enabled = profile.notifications_enabled if (profile.connected and profile.telegram_id) else False
@@ -132,22 +132,22 @@ def goals_page(request):
 
 @auth_required_with_modal
 def habits_page(request):
-    """Сторінка управління привычками користувача"""
+    """Сторінка управління звичками користувача"""
     from .models import Habit, HabitTemplate
     from django.utils import timezone
     from datetime import datetime, timedelta
     
-    # Получаемо всі привычки користувача
+    # Получаемо всі звички користувача
     user_habits = Habit.objects.filter(user=request.user).order_by('-created_at')
 
-    # Получаем шаблоны привычек для створення нових
+    # Отримуємо шаблони звичок для створення нових
     habit_templates = HabitTemplate.objects.all()
 
-    # Статистика привычек
+    # Статистика звичек
     total_habits = user_habits.count()
     active_habits = user_habits.filter(active=True).count()
     
-    # Привычки, отмеченные сегодня
+   # Звички, відзначені сьогодні
     today = timezone.now().date()
     completed_today = 0
     current_streak = 0
@@ -171,18 +171,18 @@ def habits_page(request):
 @login_required
 @require_http_methods(["GET"])
 def get_habits_stats(request):
-    """API для получения обновленной статистики привычек"""
+    """API для отримання оновленої статистики звичок"""
     try:
         from .models import Habit
         from django.utils import timezone
         
         user_habits = Habit.objects.filter(user=request.user)
         
-        # Статистика привычек
+        # Статистика звичок
         total_habits = user_habits.count()
         active_habits = user_habits.filter(active=True).count()
         
-        # Привычки, отмеченные сегодня
+        # Звички, відзначені сьогодні
         today = timezone.now().date()
         completed_today = 0
         current_streak = 0
@@ -211,7 +211,7 @@ def get_habits_stats(request):
 @login_required
 @require_http_methods(["GET"])
 def get_user_habits(request):
-    """API для получения списка привычек пользователя"""
+    """API для отримання списку звичок користувача"""
     try:
         from .models import Habit
         from django.utils import timezone
@@ -248,7 +248,7 @@ def register_view(request):
         password = request.POST.get("password")
         confirm = request.POST.get("confirm")
 
-        # Проверяем, если это AJAX запрос
+        # Перевіряємо, якщо це запит AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
 
         if password != confirm:
@@ -281,7 +281,7 @@ def login_view(request):
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
 
-        # Проверяем, если это AJAX запрос
+        # Перевіряємо, якщо це запит AJAX
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', '')
 
         if user is None:
@@ -315,21 +315,21 @@ def login_view(request):
             # Якщо підтвердженого немає, створюємо новий запит (якщо його ще немає)
             if not Pending2FA.objects.filter(user=user, confirmed=False, declined=False).exists():
                 print(f"📤 Creating new 2FA request and sending message...")
-                # Очищаем старые записи перед созданием новой
+                # Очищаємо старі записи перед створенням нової
                 Pending2FA.objects.filter(user=user).delete()
                 print(f"🧹 Cleared old 2FA records for user: {user.username}")
                 
                 Pending2FA.objects.create(user=user, telegram_id=profile.telegram_id)
                 print(f"🎯 Calling send_2fa_request.delay({profile.telegram_id}, {user.username})")
                 
-                # Проверим, что задача действительно отправляется
+                # Перевіримо, що завдання справді вирушає
                 try:
                     task_result = send_2fa_request.delay(profile.telegram_id, user.username)
                     print(f"✅ Task queued successfully with ID: {task_result.id}")
                     print(f"📊 Task state: {task_result.state}")
                 except Exception as e:
                     print(f"❌ Error queuing task: {str(e)}")
-                    # Fallback - вызовем задачу синхронно
+                    # Fallback - викличем задачу синхронно
                     print("🔄 Falling back to synchronous call...")
                     send_2fa_request(profile.telegram_id, user.username)
             else:
@@ -347,7 +347,7 @@ def login_view(request):
 
         # Якщо 2FA не увімкнена → звичайний логін
         login(request, user)
-        track_user_activity(user, "login")  # Трекаем активность входа
+        track_user_activity(user, "login")  # Трекаем активність входа
         messages.success(request, "Login successful!")
         
         if is_ajax:
@@ -372,7 +372,7 @@ def telegram_2fa_status(request):
     try:
         user = User.objects.get(username=username)
         
-        # Покажем ВСЕ записи для этого пользователя
+        # Покажемо ВСІ записи для цього користувача
         all_pending = Pending2FA.objects.filter(user=user)
         print(f"🔍 All Pending2FA records for {username}:")
         for p in all_pending:
@@ -405,7 +405,7 @@ def telegram_2fa_status(request):
         # Якщо відхилено, повертаємо статус відхилення без видалення
         if is_declined and pending_declined:
             print(f"🚫 2FA request was declined for user: {username}")
-            # Не удаляем запись немедленно, дадим фронтенду время на обработку
+            # Не видаляємо запис негайно, дамо фронтенду час на обробку
             return JsonResponse({
                 "authenticated": False, 
                 "confirmed": False,
@@ -458,7 +458,7 @@ def decline_2fa(request):
         print(f"🚫 Active pending request found: {pending_request}")
         
         if pending_request:
-            # Сохраняем данные для обновления Telegram сообщения
+            # Зберігаємо дані для оновлення Telegram повідомлення
             telegram_id = pending_request.telegram_id
             message_id = pending_request.telegram_message_id
             
@@ -466,14 +466,14 @@ def decline_2fa(request):
             pending_request.save()
             print(f"🚫 Request marked as declined for user: {username}")
             
-            # Обновляем сообщение в Telegram, убирая кнопки и показывая истечение
+            # Оновлюємо повідомлення в Telegram, прибираючи кнопки та показуючи закінчення
             from .tasks import update_2fa_message, cleanup_declined_2fa
             try:
-                # Обновляем сообщение в Telegram
+                # Оновлюємо повідомлення у Telegram
                 update_2fa_message.delay(telegram_id, username, message_id)
                 print(f"🚫 Telegram message update task sent")
                 
-                # Запланировать очистку declined записи через 30 секунд
+                # Запланувати очищення declined запису через 30 секунд
                 cleanup_declined_2fa.apply_async(
                     args=[pending_request.id], 
                     countdown=30
@@ -515,7 +515,7 @@ def logout_view(request):
 
 @csrf_exempt  
 def test_telegram_update(request):
-    """API для тестирования обновления сообщений в Telegram"""
+    """API для тестування оновлення повідомлень у Telegram"""
     if not (request.user.is_superuser or settings.DEBUG):
         return JsonResponse({"status": "error", "message": "Access denied"}, status=403)
     
@@ -527,7 +527,7 @@ def test_telegram_update(request):
         test_type = data.get('test_type', 'update_message')
         
         if test_type == 'update_message':
-            # Тестовое обновление сообщения
+            # Тестове оновлення повідомлення
             from .tasks import update_2fa_message
             telegram_id = data.get('telegram_id', '123456789')  # тестовый ID
             username = data.get('username', 'test_user')
@@ -542,7 +542,7 @@ def test_telegram_update(request):
             })
             
         elif test_type == 'expire_notification':
-            # Тестовое уведомление об истечении
+            # Тестове повідомлення про закінчення
             from .tasks import send_2fa_decline_notification
             telegram_id = data.get('telegram_id', '123456789')
             username = data.get('username', 'test_user')
@@ -583,7 +583,7 @@ def latest_notifications(request):
     return JsonResponse({'notifications': data})
 
 def unread_notifications_count(request):
-    """API для подсчета непрочитанных уведомлений"""
+    """API для підрахунку непрочитаних повідомлень"""
     if not request.user.is_authenticated:
         return JsonResponse({'count': 0})
     
@@ -1023,7 +1023,7 @@ def goal_progress(request, goal_id):
         total_subgoals = subgoals.count()
         completed_subgoals = subgoals.filter(completed=True).count()
         
-        # Вычисляем процент
+        # Рахуєм процент
         progress_percent = round((completed_subgoals / total_subgoals) * 100) if total_subgoals > 0 else 0
         
         return JsonResponse({
@@ -1056,7 +1056,7 @@ def get_activity_chart_data(request):
 @login_required
 @require_POST
 def delete_goal(request):
-    """API для удаления цели"""
+    """API для видалення цілі"""
     try:
         data = json.loads(request.body)
         goal_id = data.get('goal_id')
@@ -1064,11 +1064,11 @@ def delete_goal(request):
         if not goal_id:
             return JsonResponse({"status": "error", "message": "Goal ID is required"}, status=400)
         
-        # Получаем цель и проверяем права доступа
+        # Отримуємо мету та перевіряємо права доступу
         goal = get_object_or_404(Goal, pk=goal_id, user=request.user)
         goal_name = goal.name
         
-        # Удаляем цель (подцели удалятся автоматически через CASCADE)
+        # Видаляємо ціль (підцілі видаляться автоматично через CASCADE)
         goal.delete()
         
         return JsonResponse({
@@ -1151,7 +1151,7 @@ def habit_checkin(request):
         data = json.loads(request.body)
         habit_id = data.get('habit_id')
         checkin_date = data.get('date')
-        checked = data.get('checked')  # Добавляем поддержку параметра checked
+        checked = data.get('checked')  # Додаємо підтримку параметра checked
         
         if not habit_id:
             return JsonResponse({"status": "error", "message": "Habit ID is required"}, status=400)
@@ -1165,47 +1165,47 @@ def habit_checkin(request):
         
         habit = Habit.objects.get(id=habit_id, user=request.user)
         
-        # Ищем существующий чекин
+        # Шукаємо існуючий чекін
         checkin = HabitCheckin.objects.filter(
             habit=habit,
             date=checkin_date
         ).first()
         
-        # Определяем желаемое состояние
+        # Визначаємо бажаний стан
         if checked is not None:
             target_completed = checked
         else:
-            # Если не передан параметр checked, переключаем
+            # Якщо не передано параметр checked, перемикаємо
             target_completed = not (checkin.completed if checkin else False)
         
         if target_completed:
-            # Нужно отметить как выполнено
+            # Потрібно відзначити як виконано
             if not checkin:
-                # Создаем новый чекин
+                # Створюємо новий чекін
                 checkin = HabitCheckin.objects.create(
                     habit=habit,
                     date=checkin_date,
                     completed=True
                 )
             else:
-                # Обновляем существующий
+                # Оновлюємо існуючий
                 checkin.completed = True
                 checkin.save()
         else:
-            # Нужно снять отметку
+            # Потрібно зняти позначку
             if checkin:
-                # Если чекин существует, обновляем
+                # Якщо чекін існує, оновлюємо
                 checkin.completed = False
                 checkin.save()
             else:
-                # Если чекина нет, создаем с completed=False для консистентности
+                # Якщо немає чекіна, створюємо з completed=False для консистентності
                 checkin = HabitCheckin.objects.create(
                     habit=habit,
                     date=checkin_date,
                     completed=False
                 )
         
-        # Получаем финальное состояние чекина
+        # Отримуємо фінальний стан чекіна
         final_completed = checkin.completed if checkin else False
         
         # Оновлюємо streak_days та last_checkin
@@ -1222,7 +1222,7 @@ def habit_checkin(request):
             
             habit.last_checkin = checkin_date
             
-            # Обновляем максимальный streak
+            # Оновлюємо максимальний streak
             if habit.streak_days > habit.max_streak_days:
                 habit.max_streak_days = habit.streak_days
         else:
@@ -1260,17 +1260,17 @@ def habit_checkin(request):
         
         habit.save()
         
-        # ОЧИСТКА КЕША: Очищаем кеш истории привычек при изменении
+        # ОЧИЩЕННЯ КЕШУ: Очищаємо кеш історії звичок при зміні
         cache_key = f'habits_history_{request.user.id}'
         cache.delete(cache_key)
         
-        # Рассчитываем статистику привычки
+       # Розраховуємо статистику звички
         from datetime import datetime, timedelta
         total_days = (datetime.now().date() - habit.created_at.date()).days + 1
         completed_checkins = HabitCheckin.objects.filter(habit=habit, completed=True).count()
         completion_rate = round((completed_checkins / total_days) * 100) if total_days > 0 else 0
         
-        # Находим самый длинный streak
+        # Знаходимо найдовший streak
         longest_streak = 0
         current_streak = 0
         check_date = habit.created_at.date()
@@ -1355,19 +1355,19 @@ def daily_habits_status(request):
 
 
 def send_support_message(request):
-    """API для отправки сообщения в техническую поддержку (работает для всех пользователей)"""
+    """API для надсилання повідомлення на технічну підтримку (працює для всіх користувачів)"""
     if request.method != 'POST':
         return JsonResponse({"status": "error", "message": "Only POST method allowed"}, status=405)
     
     try:
         from .models import SupportMessage
         
-        # Получаем данные из запроса
+        # Отримуємо дані із запиту
         data = json.loads(request.body)
         category = data.get('category', '').strip()
         message = data.get('message', '').strip()
         
-        # Дополнительные поля в зависимости от категории
+        # Додаткові поля в залежності від категорії
         username = data.get('username', '').strip()
         email = data.get('email', '').strip()
         phone = data.get('phone', '').strip()
@@ -1395,9 +1395,9 @@ def send_support_message(request):
             if not username:
                 return JsonResponse({"status": "error", "message": "Username is required for Telegram problems"}, status=400)
         
-        # For unauthenticated users, require some form of identification
-        # For 2FA and Telegram problems, username is sufficient
-        # For other problems, we need email for contact
+        # Для неавторизованих користувачів потрібна певна форма ідентифікації
+        # Для проблем із 2FA та Telegram достатньо імені користувача
+        # Для інших проблем нам потрібна електронна адреса для зв'язку
         if not request.user.is_authenticated:
             if category in ['2fa_problem', 'telegram_problem']:
                 # Username is sufficient for these categories
@@ -1411,16 +1411,16 @@ def send_support_message(request):
         if len(message) > 2000:
             return JsonResponse({"status": "error", "message": "Message too long (maximum 2000 characters)"}, status=400)
         
-        # Получаем дополнительную информацию о запросе
+        # Отримуємо додаткову інформацію про запит
         user_agent = request.META.get('HTTP_USER_AGENT', '')
         ip_address = request.META.get('REMOTE_ADDR', '')
         
-        # Если прокси, получаем реальный IP
+        # Якщо проксі, отримуємо реальний IP
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             ip_address = x_forwarded_for.split(',')[0].strip()
         
-        # Формируем structured_data с дополнительными полями
+        # Формуємо structured_data з додатковими полями
         structured_data = {
             'category': category,
             'username': username,
@@ -1431,7 +1431,7 @@ def send_support_message(request):
             'last_login': last_login,
         }
         
-        # Определяем приоритет в зависимости от категории
+        # Визначаємо пріоритет залежно від категорії
         priority_mapping = {
             '2fa_problem': 'high',
             'login_problem': 'medium',
@@ -1440,7 +1440,7 @@ def send_support_message(request):
             'feature_request': 'low'
         }
         
-        # Создаем сообщение в поддержку
+        # Створюємо повідомлення на підтримку
         support_message = SupportMessage.objects.create(
             user=request.user if request.user.is_authenticated else None,
             subject=f"{category}: {message[:50]}...",
@@ -1449,7 +1449,7 @@ def send_support_message(request):
             user_agent=user_agent,
             ip_address=ip_address,
             priority=priority_mapping.get(category, 'low'),
-            # Добавляем структурированные данные в admin_notes для просмотра
+           # Додаємо структуровані дані до admin_notes для перегляду
             admin_notes=f"Structured data: {json.dumps(structured_data, ensure_ascii=False, indent=2)}"
         )
         
@@ -1470,14 +1470,14 @@ def send_support_message(request):
 @login_required
 def habits_completion_history(request):
     """
-    API для получения истории выполнения привычек по дням (ОПТИМИЗИРОВАНО + КЕШИРОВАНИЕ)
+   API для отримання історії виконання звичок по днях (ОПТИМІЗОВАНО + КЕШУВАННЯ)
     """
     try:
         from django.utils import timezone
         from datetime import timedelta
         from django.db.models import Count, Q
         
-        # Проверяем кеш для этого пользователя
+        # Перевіряємо кеш для цього користувача
         cache_key = f'habits_history_{request.user.id}'
         cached_data = cache.get(cache_key)
         
@@ -1487,7 +1487,7 @@ def habits_completion_history(request):
                 "data": cached_data
             })
         
-        # Получаем привычки пользователя
+        # Отримуємо звички користувача
         user_habits = Habit.objects.filter(user=request.user, active=True)
         
         if not user_habits.exists():
@@ -1496,11 +1496,11 @@ def habits_completion_history(request):
                 "data": {}
             })
         
-        # Получаем данные за последние 30 дней
+        # Отримуємо дані за останні 30 днів
         end_date = timezone.now().date()
         start_date = end_date - timedelta(days=30)
         
-        # ОПТИМИЗАЦИЯ: Получаем все check-ins за период одним запросом
+        # ОПТИМІЗАЦІЯ: Отримуємо всі check-ins за період одним запитом
         habit_ids = list(user_habits.values_list('id', flat=True))
         checkins = HabitCheckin.objects.filter(
             habit_id__in=habit_ids,
@@ -1508,7 +1508,7 @@ def habits_completion_history(request):
             completed=True
         ).values('date', 'habit_id')
         
-        # Группируем checkins по дням для быстрого доступа
+        # Групуємо checkins щодня для швидкого доступу
         checkins_by_date = {}
         for checkin in checkins:
             date_str = checkin['date'].strftime('%Y-%m-%d')
@@ -1519,16 +1519,16 @@ def habits_completion_history(request):
         total_habits = user_habits.count()
         completion_data = {}
         
-        # ОПТИМИЗАЦИЯ: Обрабатываем все дни за один проход
+        # ОПТИМІЗАЦІЯ: Обробляємо всі дні за один прохід
         current_date = start_date
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
             
-            # Для сегодняшнего дня используем актуальное состояние
+            # Для сьогоднішнього дня використовуємо актуальний стан
             if current_date == end_date:
                 completed_habits = sum(1 for habit in user_habits if habit.is_checked_today())
             else:
-                # Для прошлых дней используем предзагруженные данные
+                # Для минулих днів використовуємо завантажені дані
                 completed_habits = len(checkins_by_date.get(date_str, set()))
             
             all_completed = (completed_habits == total_habits and total_habits > 0)
@@ -1541,7 +1541,7 @@ def habits_completion_history(request):
             
             current_date += timedelta(days=1)
         
-        # Кешируем результат на 5 минут (для прошлых дней данные редко меняются)
+       # Кешуємо результат на 5 хвилин (для минулих днів дані рідко змінюються)
         cache.set(cache_key, completion_data, 300)
         
         return JsonResponse({
@@ -1559,7 +1559,7 @@ def habits_completion_history(request):
 @require_POST
 def save_habits_completion(request):
     """
-    API для сохранения информации о выполнении всех привычек в конкретный день
+    API для збереження інформації про виконання всіх звичок у конкретний день
     """
     try:
         data = json.loads(request.body)
@@ -1569,8 +1569,8 @@ def save_habits_completion(request):
         if not date_str:
             return JsonResponse({"status": "error", "message": "Date is required"}, status=400)
         
-        # Можно сохранить эту информацию в базу данных для статистики
-        # Пока просто возвращаем успех
+        # Можна зберегти цю інформацію до бази даних для статистики 
+        # Поки що просто повертаємо успіх
         
         return JsonResponse({
             "status": "success",
@@ -1588,12 +1588,12 @@ def save_habits_completion(request):
 
 @auth_required_with_modal
 def statistics_page(request):
-    """Страница статистики пользователя с графиками и анимациями"""
+    """Сторінка статистики користувача з графіками та анімаціями"""
     from django.utils import timezone
     from datetime import timedelta
     from django.db.models import Count, Avg, Q
     
-    # Получаем цели пользователя
+    # Отримуємо цілі користувача
     user_goals = Goal.objects.filter(user=request.user)
     total_goals = user_goals.count()
     completed_goals = user_goals.filter(completed=True).count()
@@ -1603,39 +1603,39 @@ def statistics_page(request):
     total_progress = 0
     goal_count_for_progress = 0
     
-    # Добавляем активные цели
+    # Додаємо активні цілі
     if active_goals_list.exists():
         for goal in active_goals_list:
             total_progress += goal.get_progress_percent()
             goal_count_for_progress += 1
     
-    # Добавляем завершенные цели как 100%
+    # Додаємо завершені цілі як 100%
     if completed_goals > 0:
         total_progress += (completed_goals * 100)
         goal_count_for_progress += completed_goals
     
-    # Вычисляем средний прогресс
+    # Обчислюємо середній прогрес по цілях
     if goal_count_for_progress > 0:
         average_goal_progress = round(total_progress / goal_count_for_progress, 1)
     else:
         average_goal_progress = 0
     
-    # Получаем привычки пользователя
+    # Отримуємо звички користувача
     user_habits = Habit.objects.filter(user=request.user)
     total_habits = user_habits.count()
     active_habits = user_habits.filter(active=True).count()
     
-    # Статистика привычек
+    # Статистика звичок
     today = timezone.now().date()
     completed_today = sum(1 for habit in user_habits.filter(active=True) if habit.is_checked_today())
     
-    # Процент выполнения привычек на сегодня (для круговой диаграммы)
+    # Відсоток виконання звичок на сьогодні (для кругової діаграми)
     if active_habits > 0:
         today_completion_percent = round((completed_today / active_habits) * 100, 1)
     else:
         today_completion_percent = 0
     
-    # Средний процент выполнения привычек за все время
+    # Середній відсоток виконання звичок за весь час
     if active_habits > 0:
         avg_habit_completion = round(
             sum(habit.completion_rate for habit in user_habits.filter(active=True)) / active_habits,
@@ -1644,14 +1644,14 @@ def statistics_page(request):
     else:
         avg_habit_completion = 0
     
-    # Текущий и максимальный streak
+    # Поточний та максимальний streak
     current_max_streak = 0
     longest_streak_ever = 0
     for habit in user_habits.filter(active=True):
         current_max_streak = max(current_max_streak, habit.current_streak)
         longest_streak_ever = max(longest_streak_ever, habit.longest_streak)
     
-    # Активность за последние 7 дней
+    # Активність протягом останніх 7 днів
     week_ago = today - timedelta(days=7)
     recent_checkins = HabitCheckin.objects.filter(
         habit__user=request.user,
@@ -1659,12 +1659,12 @@ def statistics_page(request):
         completed=True
     ).count()
     
-    # Активность пользователя
+    # Активність користувача
     activity_data_raw = get_user_weekly_activity(request.user)
     total_activity_points = activity_data_raw.get('total_activities', 0)
     
-    # Подготовка данных для графиков
-    # График выполнения привычек за последние 30 дней
+    # Підготовка даних для графіків 
+    # Графік виконання навичок за останні 30 днів
     habits_chart_data = []
     for i in range(30):
         check_date = today - timedelta(days=29-i)
@@ -1678,7 +1678,7 @@ def statistics_page(request):
             'completed': completed
         })
     
-    # График прогресса целей (топ-5 активных)
+    # Графік прогресу цілей (топ-5 активних)
     goals_chart_data = []
     for goal in active_goals_list[:5]:
         goals_chart_data.append({
@@ -1687,7 +1687,7 @@ def statistics_page(request):
             'progress': goal.get_progress_percent()
         })
     
-    # Подготовка данных активности для графика
+    # Підготовка даних активності для графіка
     activity_chart_data = []
     if 'weekly_data' in activity_data_raw and 'labels' in activity_data_raw:
         for day_label, count in zip(activity_data_raw['labels'], activity_data_raw['weekly_data']):
@@ -1697,7 +1697,7 @@ def statistics_page(request):
             })
     
     context = {
-        # Общая статистика
+        # Загальна статистика
         'total_goals': total_goals,
         'completed_goals': completed_goals,
         'active_goals': active_goals,
@@ -1724,14 +1724,14 @@ def statistics_page(request):
 
 @login_required
 def test_websocket_notification(request):
-    """Отправляет тестовое уведомление текущему пользователю через WebSocket"""
+    """Надсилає тестове повідомлення поточному користувачеві через WebSocket"""
     from datetime import datetime
     from channels.layers import get_channel_layer
     from asgiref.sync import async_to_sync
     
     user = request.user
     
-    # Создаем уведомление в БД
+    # Створюємо повідомлення у БД
     notification = Notification.objects.create(
         user=user,
         message=f"🧪 Test WebSocket at {datetime.now().strftime('%H:%M:%S')}",
@@ -1740,7 +1740,7 @@ def test_websocket_notification(request):
         telegram_sent=False
     )
     
-    # Отправляем через WebSocket
+    # Відправляємо через WebSocket
     channel_layer = get_channel_layer()
     if channel_layer:
         try:
@@ -1767,7 +1767,7 @@ def test_websocket_notification(request):
 
 @login_required
 def mark_notification_read(request):
-    """Помечает уведомление как прочитанное"""
+    """Позначає повідомлення як прочитане"""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
     
@@ -1780,7 +1780,7 @@ def mark_notification_read(request):
         
         print(f"📝 Marking notification {notification_id} as read for user {request.user.username}")
         
-        # Помечаем как прочитанное
+        # Позначаємо як прочитанеё
         updated = Notification.objects.filter(
             id=notification_id,
             user=request.user

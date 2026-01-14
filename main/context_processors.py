@@ -3,7 +3,7 @@ Context processors для TaskForge
 """
 
 def user_tech_admin(request):
-    """Добавляет информацию о том, является ли пользователь техадмином"""
+    """Додає інформацію про те, чи є користувач техадміном"""
     is_tech_admin = False
     
     if request.user.is_authenticated:

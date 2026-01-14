@@ -52,7 +52,7 @@ async def send_2fa_async(telegram_id, username):
         reply_markup=reply_markup
     )
     
-    # Сохраняем message_id в базе данных для последующего обновления
+   # Зберігаємо message_id у базі даних для подальшого оновлення
     try:
         from django.contrib.auth.models import User
         from .models import Pending2FA
@@ -81,11 +81,11 @@ def send_2fa_request(telegram_id, username):
 
 
 async def send_2fa_decline_notification_async(telegram_id, username):
-    """Асинхронное отправление уведомления об отклонении 2FA"""
+    """Асинхронне надсилання повідомлення про відхилення 2FA"""
     try:
         bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
         
-        # Отправляем новое сообщение об отклонении/истечении запроса
+        # Надсилаємо нове повідомлення про відхилення/закінчення запиту
         await bot.send_message(
             chat_id=telegram_id,
             text=f"⏰ <b>2FA Request Expired</b>\n\n"
@@ -102,11 +102,11 @@ async def send_2fa_decline_notification_async(telegram_id, username):
 
 
 async def update_2fa_message_async(telegram_id, username, message_id=None):
-    """Асинхронное обновление сообщения 2FA в Telegram для показа истечения"""
+    """Асинхронне оновлення повідомлення 2FA в Telegram для показу закінчення"""
     try:
         bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
         
-        # Обновляем существующее сообщение, убирая кнопки
+        # Оновлюємо існуюче повідомлення, забираючи кнопки
         expired_text = (
             f"⏰ <b>2FA Request Expired</b>\n\n"
             f"User: <code>{username}</code>\n"
@@ -114,7 +114,7 @@ async def update_2fa_message_async(telegram_id, username, message_id=None):
             f"🔒 If this wasn't you, please secure your account."
         )
         
-        # Если у нас есть message_id, обновляем существующее сообщение
+        # Якщо у нас є message_id, оновлюємо існуючі повідомлення
         if message_id:
             try:
                 await bot.edit_message_text(
@@ -122,15 +122,15 @@ async def update_2fa_message_async(telegram_id, username, message_id=None):
                     message_id=message_id,
                     text=expired_text,
                     parse_mode='HTML',
-                    reply_markup=None  # Убираем кнопки
+                    reply_markup=None  # забираєм кнопки
                 )
                 print(f"✅ Updated existing 2FA message {message_id} for user {username}")
                 return True
             except Exception as edit_error:
                 print(f"⚠️ Failed to edit message {message_id}: {edit_error}")
-                # Fallback: отправляем новое сообщение
+                # Fallback: надсилаємо нове повідомлення
         
-        # Если не удалось обновить или нет message_id, отправляем новое сообщение
+        # Якщо не вдалося оновити чи ні message_id, надсилаємо нове повідомлення
         await bot.send_message(
             chat_id=telegram_id,
             text=expired_text,
@@ -147,19 +147,19 @@ async def update_2fa_message_async(telegram_id, username, message_id=None):
 
 @shared_task
 def send_2fa_decline_notification(telegram_id, username):
-    """Celery-задача для отправки уведомления об отклонении 2FA"""
+    """Celery-завдання для надсилання повідомлення про відхилення 2FA"""
     asyncio.run(send_2fa_decline_notification_async(telegram_id, username))
 
 
 @shared_task
 def update_2fa_message(telegram_id, username, message_id=None):
-    """Celery-задача для обновления сообщения 2FA в Telegram"""
+    """Celery-завдання для оновлення повідомлення 2FA в Telegram"""
     return asyncio.run(update_2fa_message_async(telegram_id, username, message_id))
 
 
 @shared_task  
 def cleanup_declined_2fa(pending_id):
-    """Celery-задача для очистки declined записей 2FA через определенное время"""
+    """Celery-завдання для очищення declined записів 2FA через певний час"""
     try:
         from .models import Pending2FA
         
@@ -181,16 +181,16 @@ def cleanup_declined_2fa(pending_id):
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
 def generate_habit_notifications(self):
     """
-    Generate streak reminder notifications for users
-    Sends reminders at: 2 hours, 1 hour, 30 min, 15 min, 5 min before day ends
-    
-    Optimization: Only runs during active period (21:00-00:05) to reduce logs and load.
-    This reduces daily checks from ~288 to ~37 (87% reduction).
-    
-    Args:
-        self: Task instance (bind=True для retry)
-    
-    Retries: 3 раза с интервалом 30 секунд при ошибках БД
+    Генерувати сповіщення про нагадування про серії для користувачів
+Надсилає нагадування о: 2 годинах, 1 годині, 30 хвилинах, 15 хвилинах, 5 хвилинах до кінця дня
+
+Оптимізація: Запускається лише протягом активного періоду (21:00-00:05) для зменшення кількості журналів та навантаження.
+Це зменшує кількість щоденних перевірок з ~288 до ~37 (зменшення на 87%).
+
+Аргументи:
+self: Екземпляр завдання (bind=True для повторної спроби)
+
+Повторні спроби: 3 рази з інтервалом 30 секунд при помилках БД
     """
     from django.contrib.auth.models import User
     from django.utils import timezone
@@ -235,7 +235,7 @@ def generate_habit_notifications(self):
         
         print(f"⏰ Time until midnight: {time_until_midnight:.1f} minutes")
         
-        # Определяем временные интервалы для напоминаний (в минутах до конца дня)
+        # Визначаємо часові інтервали для нагадувань (у хвилинах до кінця дня)
         reminder_intervals = {
             120: "2 hours",  # 2 часа
             60: "1 hour",    # 1 час
@@ -244,8 +244,8 @@ def generate_habit_notifications(self):
             5: "5 minutes"    # 5 минут
         }
     
-        # Определяем текущий интервал напоминания (с погрешностью ±3 минуты)
-        # Это позволяет отправлять напоминания даже если таска запустилась с небольшой задержкой
+        # Визначаємо поточний інтервал нагадування (з похибкою ±3 хвилини) 
+        # Це дозволяє надсилати нагадування навіть якщо тяга запустилася з невеликою затримкою
         current_reminder = None
         for minutes, label in reminder_intervals.items():
             diff = abs(time_until_midnight - minutes)
@@ -264,13 +264,13 @@ def generate_habit_notifications(self):
         
         notifications_sent = 0
         
-        # Получаем всех пользователей с активными привычками
+        # Отримуємо всіх користувачів з активними звичками
         users_with_habits = User.objects.filter(
             habits__active=True
         ).distinct()
         
         for user in users_with_habits:
-            # Получаем активные привычки пользователя, которые НЕ выполнены сегодня
+           # Отримуємо активні звички користувача, які НЕ виконані сьогодні
             incomplete_habits = []
             
             for habit in user.habits.filter(active=True):
@@ -278,14 +278,14 @@ def generate_habit_notifications(self):
                     incomplete_habits.append(habit)
             
             if not incomplete_habits:
-                continue  # У пользователя все привычки выполнены
+                continue  # У користувача всі звички виконані
             
-            # Проверяем настройки Telegram
+            # Перевіряєм налаштування Telegram
             profile = getattr(user, 'telegram_profile', None)
             send_telegram = bool(profile and profile.connected and 
                             profile.telegram_id and profile.notifications_enabled)
             
-            # Формируем сообщение на английском (как в Duolingo)
+            # Формуємо повідомлення англійською (як у Duolingo)
             if len(incomplete_habits) == 1:
                 habit = incomplete_habits[0]
                 if habit.current_streak > 0:
@@ -332,7 +332,7 @@ def generate_habit_notifications(self):
                         f"You can do this! 💪"
                         )
             
-            # Создаем уведомление
+            # Створюємо повідомлення
             notification = Notification.objects.create(
                 user=user,
                 message=message,
@@ -342,7 +342,7 @@ def generate_habit_notifications(self):
                 scheduled_time=now
             )
             
-            # Отправляем web-уведомление
+            # Відправляємо web-повідомлення
             try:
                 from .notification import send_web_notification
                 send_web_notification(user, message)
@@ -350,7 +350,7 @@ def generate_habit_notifications(self):
             except Exception as e:
                 print(f"❌ Failed to send web notification to {user.username}: {e}")
             
-            # Отправляем в Telegram если включено
+            # Відправляємо в Telegram якщо увімкнено
             if send_telegram:
                 try:
                     send_telegram_notification_task.delay(user.id, message)
@@ -368,25 +368,25 @@ def generate_habit_notifications(self):
     except OperationalError as e:
         print(f"❌ Database connection error: {e}")
         print(f"🔄 Retrying task (attempt {self.request.retries + 1}/3)...")
-        # Retry через 30 секунд при ошибке БД
+        # Retry через 30 секунд при помилці БД
         raise self.retry(exc=e, countdown=30)
     
     except Exception as e:
         print(f"❌ Unexpected error in generate_habit_notifications: {e}")
         import traceback
         print(traceback.format_exc())
-        # Для других ошибок не делаем retry
+        # Для інших помилок не робимо retry
         return f"Error: {str(e)}"
 
 
 @shared_task
 def test_generate_habit_notifications(user_id=None):
-    """
-    ТЕСТОВАЯ версия: генерирует уведомления о привычках БЕЗ проверки времени
-    Используется только для тестирования системы уведомлений
-    
-    Args:
-        user_id: ID конкретного пользователя (опционально). Если не указан - для всех пользователей
+    """ 
+ТЕСТОВА версія: генерує повідомлення про звички БЕЗ перевірки часу 
+Використовується лише для тестування системи сповіщень 
+
+Args: 
+user_id: ID конкретного користувача (опційно). Якщо не вказано – для всіх користувачів
     """
     from django.contrib.auth.models import User
     from django.utils import timezone
@@ -397,7 +397,7 @@ def test_generate_habit_notifications(user_id=None):
     now = timezone.now()
     notifications_sent = 0
     
-    # Получаем пользователей с активными привычками
+    # Отримуємо користувачів з активними звичками
     if user_id:
         users_with_habits = User.objects.filter(id=user_id, habits__active=True).distinct()
         print(f"🎯 Testing for specific user ID: {user_id}")
@@ -406,7 +406,7 @@ def test_generate_habit_notifications(user_id=None):
         print(f"🎯 Testing for all users with habits")
     
     for user in users_with_habits:
-        # Получаем активные привычки пользователя, которые НЕ выполнены сегодня
+        # Отримуємо активні звички користувача, які НЕ виконані сьогодні
         incomplete_habits = []
         
         for habit in user.habits.filter(active=True):
@@ -417,12 +417,12 @@ def test_generate_habit_notifications(user_id=None):
             print(f"✅ {user.username}: all habits completed today")
             continue
         
-        # Проверяем настройки Telegram
+       # Перевіряємо налаштування Telegram
         profile = getattr(user, 'telegram_profile', None)
         send_telegram = (profile and profile.connected and 
                         profile.telegram_id and profile.notifications_enabled)
         
-        # Формируем тестовое сообщение
+       # Формуємо тестове повідомлення
         if len(incomplete_habits) == 1:
             habit = incomplete_habits[0]
             if habit.current_streak > 0:
@@ -466,7 +466,7 @@ def test_generate_habit_notifications(user_id=None):
                     f"You can do this! 💪"
                 )
         
-        # Создаем уведомление
+        # Створюємо повідомлення
         notification = Notification.objects.create(
             user=user,
             message=message,
@@ -476,7 +476,7 @@ def test_generate_habit_notifications(user_id=None):
             scheduled_time=now
         )
         
-        # Отправляем web-уведомление
+        # Відправляємо web-повідомлення
         try:
             from .notification import send_web_notification
             send_web_notification(
@@ -490,7 +490,7 @@ def test_generate_habit_notifications(user_id=None):
         except Exception as e:
             print(f"❌ Failed to send web notification to {user.username}: {e}")
         
-        # Отправляем в Telegram если включено
+        # Відправляємо в Telegram якщо увімкнено
         if send_telegram:
             try:
                 send_telegram_notification_task.delay(user.id, message)
@@ -509,7 +509,7 @@ def test_generate_habit_notifications(user_id=None):
 
 @shared_task
 def send_telegram_notification_task(user_id, message):
-    """Асинхронная отправка Telegram уведомления"""
+    """Асинхронне надсилання Telegram повідомлення"""
     from django.contrib.auth.models import User
     
     try:
@@ -528,9 +528,9 @@ def send_telegram_notification_task(user_id, message):
 
 @shared_task
 def check_and_notify_broken_streaks():
-    """
-    Проверяет и уведомляет пользователей о потерянных streak
-    Запускается в начале нового дня (00:05)
+    """ 
+    Перевіряє та повідомляє користувачів про втрачені streak 
+    Запускається на початку нового дня (00:05) 
     """
     from django.contrib.auth.models import User
     from django.utils import timezone
@@ -562,7 +562,7 @@ def check_and_notify_broken_streaks():
             print(f"✅ {user.username}: all streaks intact (checked {user.habits.filter(active=True).count()} habits)")
             continue
         
-        # Формируем сообщение о потерянных streak
+        # Формуємо повідомлення про втрачені streak
         if len(broken_habits) == 1:
             habit_info = broken_habits[0]
             message = (
@@ -578,12 +578,12 @@ def check_and_notify_broken_streaks():
                 f"Start fresh today! 💪"
             )
         
-        # Проверяем настройки Telegram
+        # Перевіряємо налаштування Telegram
         profile = getattr(user, 'telegram_profile', None)
         send_telegram = bool(profile and profile.connected and 
                         profile.telegram_id and profile.notifications_enabled)
         
-        # Создаем уведомление
+        # Створюємо повідомлення
         notification = Notification.objects.create(
             user=user,
             message=message,
@@ -592,7 +592,7 @@ def check_and_notify_broken_streaks():
             send_telegram=send_telegram
         )
         
-        # Отправляем уведомления
+        # Надсилаємо повідомлення
         try:
             from .notification import send_web_notification
             send_web_notification(user, message)

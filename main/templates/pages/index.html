@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <!-- Habits section moved under create-goal-btn -->
+      <!-- Розділ «Звички» переміщено під кнопку «створити мету» -->
       <div class="habits-section">
         <h2 class="section-title">My Habits</h2>
         <div class="habit-cards">
@@ -111,10 +111,10 @@
         </div>
       </div>
     </div>
-  </div> <!-- Закрываем welcome-section -->
+  </div> <!-- Закриваємо welcome-section -->
 
   <div class="mygoals-section">
-    <div style="clear: both;"></div> <!-- Добавляем элемент для очистки float -->
+    <div style="clear: both;"></div> <!-- Додаємо елемент для очищення float -->
     <h2 class="section-title">My Goals</h2>
     <div class="goal-cards">
       {% if user_goals %}
@@ -212,7 +212,7 @@
     <div class="stats-dashboard">
       <canvas id="progressChart"></canvas>
 
-      <!-- Минималистичный календарь -->
+      <!-- Мінімалістичний календар -->
       <div class="mini-calendar">
         <div class="calendar-header">
           <span class="month">July 2023</span>
@@ -228,7 +228,7 @@
             <span>Sun</span>
           </div>
           <div class="days">
-            <!-- Дни календаря будут добавлены через JS -->
+            <!-- Дні календаря будуть додані через JS -->
             <div class="day">1</div>
             <div class="day">2</div>
             <div class="day active">3</div>
@@ -248,12 +248,12 @@
     </div>
   </div>
 
-  <!-- Modal window for creating a new goal or habit -->
+  <!-- Модальне вікно для створення нової мети або звички -->
   <div id="create-modal" class="modal">
     <div class="modal-content">
       <span class="close create-modal-close">&times;</span>
 
-      <!-- Step 1: Choose type (goal or habit) -->
+      <!-- Крок 1: Виберіть тип (мета чи звичка) -->
       <div class="create-step" id="create-step-1">
         <h2>What would you like to create?</h2>
         <div class="create-options">
@@ -270,7 +270,7 @@
         </div>
       </div>
 
-      <!-- Step 2: Choose from template or create your own -->
+      <!-- Крок 2: Виберіть шаблон або створіть свій власний -->
       <div class="create-step" id="create-step-2-habit" style="display: none;">
         <h2>New Habit</h2>
         <div class="create-template-option">
@@ -280,7 +280,7 @@
             <button class="template-btn" data-template-type="custom">Create your own</button>
           </div>
 
-          <!-- Predefined habit templates -->
+          <!-- Попередньо визначені шаблони звичок -->
           <div class="template-container" id="habit-templates">
             <div class="template-list">
               {% if template_habits %}
@@ -357,7 +357,7 @@
           </div>
         </div>
       </div>
-      <!-- Step 2: Creating a goal -->
+      <!-- Крок 2: Створення мети -->
       <div class="create-step" id="create-step-2-goal" style="display: none;">
         <h2>New Goal</h2>
         <div class="create-template-option">
@@ -367,7 +367,7 @@
             <button class="template-btn" data-template-type="custom">Create your own</button>
           </div>
 
-          <!-- Predefined goal templates -->
+          <!-- Шаблони попередньо визначених цілей -->
           <div class="template-container" id="goal-templates">
             <div class="template-list">
               {% if template_goals %}
@@ -402,7 +402,7 @@
             </div>
           </div>
 
-          <!-- Form for creating your own goal -->
+          <!-- Форма для створення власної мети -->
           <div class="template-container" id="goal-custom" style="display: none;">
             <form id="custom-goal-form">
               <div class="form-group">

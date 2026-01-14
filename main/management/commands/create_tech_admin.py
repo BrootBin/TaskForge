@@ -1,6 +1,6 @@
 """
-Команда для создания технического администратора
-Использование: python manage.py create_tech_admin <username>
+Команда для створення технічного адміністратора
+Використання: python manage.py create_tech_admin <username>
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -38,7 +38,7 @@ class Command(BaseCommand):
             except TechAdmin.DoesNotExist:
                 raise CommandError(f'Пользователь "{username}" не является техадмином')
         else:
-            # Создаем роль техадмина
+            # Створюємо роль техадміну
             tech_admin, created = TechAdmin.objects.get_or_create(
                 user=user,
                 defaults={
@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 }
             )
             
-            # Устанавливаем is_staff=True для доступа к админке
+            #Встановлюємо is_staff=True для доступу до адмінки
             if not user.is_staff:
                 user.is_staff = True
                 user.save()
@@ -69,13 +69,13 @@ class Command(BaseCommand):
                     )
                 )
             else:
-                # Уже существует
+                # Вже існує
                 if tech_admin.is_active:
                     self.stdout.write(
                         self.style.WARNING(f'⚠ Пользователь "{username}" уже является активным техадмином')
                     )
                 else:
-                    # Активируем его
+                    # Активуємо його
                     tech_admin.is_active = True
                     tech_admin.save()
                     self.stdout.write(
