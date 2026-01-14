@@ -40,7 +40,6 @@ class Habit(models.Model):
     
     @property
     def current_streak(self):
-        """Возвращает актуальный streak, учитывая пропущенные дни"""
         from django.utils import timezone
         from datetime import timedelta
         
@@ -202,14 +201,14 @@ class Notification(models.Model):
 class Pending2FA(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     telegram_id = models.CharField(max_length=50)
-    telegram_message_id = models.CharField(max_length=50, null=True, blank=True)  # ID сообщения в Telegram
+    telegram_message_id = models.CharField(max_length=50, null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed = models.BooleanField(default=False)
-    declined = models.BooleanField(default=False)  # Поле для отклоненных запросов
+    declined = models.BooleanField(default=False)  
 
 
 class UserActivity(models.Model):
-    """Модель для трекинга активності користувача по дням тижня"""
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='activity')
     
     # Активність по дням тижня (0 = Понеділок, 6 = Неділя)
